@@ -30,7 +30,7 @@ independently audited.
 
 | Party | Learns | Does not learn |
 | --- | --- | --- |
-| Rendezvous service | Rotating 16-byte tags, source endpoints, requested tags | Public keys, usernames, session ids, content, social graph |
+| Rendezvous service | Rotating 16-byte tags, source endpoints, which tag/endpoint an IP queries and when | Public keys, usernames, session ids, message content, whether a conversation is established |
 | First onion relay | Sender's network address, next hop endpoint | Recipient, session id, content |
 | Middle relay | Previous and next hop endpoints | Sender, recipient, session id, content |
 | Delivery relay | Previous hop, recipient endpoint | Sender, session id (inner packet is opaque), content |
@@ -42,6 +42,14 @@ The rendezvous tag is `BLAKE2b(public key, UTC day)`. It is a pseudonym that
 rotates daily and is linkable within a day by someone who sees the tag and can
 guess the public key (public keys are not secret). The service never receives
 the key itself.
+
+Discovery metadata is weaker than message metadata: the rendezvous service can
+observe that an IP address queried a tag that maps to a particular endpoint, so
+it can correlate a discovery attempt at the IP/tag level for that day. It does
+not receive public keys, usernames, session ids or content, and it cannot tell
+whether a chat was established or what was sent. This is inherent in a minimal
+signaling service. Run your own rendezvous, use only the direct invite path, or
+wait for a DHT/PIR-based discovery design if this linkability matters.
 
 ## Cryptography
 
