@@ -7,8 +7,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(JARGONET_SODIUM_ROOT "" CACHE PATH "Prefix containing libsodium headers and libraries")
-set(SODIUM_INCLUDE_DIR "" CACHE PATH "Path containing sodium.h")
-set(SODIUM_LIBRARY "" CACHE FILEPATH "libsodium library to link")
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
