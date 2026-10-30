@@ -1,5 +1,7 @@
 # Jargonet
 
+[![ci](https://github.com/aadarshmohanty07-design/Jargonet/actions/workflows/ci.yml/badge.svg)](https://github.com/aadarshmohanty07-design/Jargonet/actions/workflows/ci.yml)
+
 Private, accountless peer-to-peer chat for the desktop. There is no sign-up, no
 email, no phone number, and no server-held identity. Your X25519 public key is
 your network identity; a local username is just a label.
@@ -61,7 +63,9 @@ cmake -S . -B build -DJARGONET_SODIUM_ROOT=/path/to/libsodium
 
 On Windows the project links MinGW runtimes statically when built with MinGW,
 so the resulting `jargonet.exe` does not depend on a particular libstdc++ DLL
-being first on `PATH`.
+being first on `PATH`. Windows Application Control (Smart App Control) may
+refuse to launch an unsigned local build; that is an OS policy, not a build
+failure. CI builds and tests on both Ubuntu and Windows.
 
 ### Windows libsodium note
 
