@@ -1,0 +1,15 @@
+build/
+.tools/
+*.obj
+*.o
+*.exe
+*.pdb
+*.ilk
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+CTestTestfile.cmake
+Testing/
+.DS_Store
+*.log
+.venv/
