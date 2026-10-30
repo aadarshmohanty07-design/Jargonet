@@ -1,5 +1,6 @@
 #include <string>
 
+#include "app/invite.hpp"
 #include "core/msgpack.hpp"
 #include "core/packet.hpp"
 #include "session/session.hpp"
@@ -159,6 +160,41 @@ void run() {
   CHECK(group_open.has_value());
   if (group_open) CHECK(group_open->text == "team msg");
   CHECK(!prepare_ratchet(ga, alice.pk, bob.pk).has_value());
+
+  // Invite codes round-trip, including the group key and endpoints.
+  ContactInvite contact_invite;
+  contact_invite.username = "alice";
+  contact_invite.pk = alice.pk;
+  contact_invite.sign_pk = alice.sign_pk;
+  contact_invite.endpoints = {Endpoint{"127.0.0.1", 41001}, Endpoint{"192.0.2.5", 7}};
+  contact_invite.rendezvous = "rv.example:47400";
+  std::string invite_error;
+  auto decoded_contact = decode_contact_invite(encode_contact_invite(contact_invite), invite_error);
+  CHECK(decoded_contact.has_value());
+  if (decoded_contact) {
+    CHECK(decoded_contact->pk == alice.pk);
+    CHECK(decoded_contact->username == "alice");
+    CHECK(decoded_contact->endpoints.size() == 2);
+    CHECK(decoded_contact->rendezvous == "rv.example:47400");
+  }
+
+  GroupInvite group_invite;
+  group_invite.sid = ga.sid;
+  group_invite.group_key = group_key.copy_bytes();
+  group_invite.label = "team";
+  group_invite.creator_pk = alice.pk;
+  group_invite.creator_sign_pk = alice.sign_pk;
+  group_invite.creator_name = "alice";
+  group_invite.endpoints = {Endpoint{"127.0.0.1", 41001}};
+  auto decoded_group = decode_group_invite(encode_group_invite(group_invite), invite_error);
+  CHECK(decoded_group.has_value());
+  if (decoded_group) {
+    CHECK(decoded_group->sid == ga.sid);
+    CHECK(decoded_group->group_key == group_key.copy_bytes());
+    CHECK(decoded_group->label == "team");
+    CHECK(decoded_group->creator_pk == alice.pk);
+    CHECK(decoded_group->endpoints.size() == 1);
+  }
 
   // Signed bytes are deterministic and bind all fields.
   Bytes s1 = chat_signing_bytes(ga.sid, alice.pk, 1, 2, 0, ChatKind::Chat, "x");

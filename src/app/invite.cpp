@@ -122,7 +122,7 @@ std::optional<ContactInvite> decode_contact_invite(std::string_view code, std::s
 
 std::string encode_group_invite(const GroupInvite& invite) {
   msg::Writer writer;
-  writer.map(9);
+  writer.map(10);
   writer.str("v");
   writer.uint(1);
   writer.str("t");
