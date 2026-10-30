@@ -4,6 +4,7 @@
 #include <chrono>
 #include <iostream>
 #include <sstream>
+#include <string_view>
 #include <vector>
 
 #include "core/crypto.hpp"
@@ -33,6 +34,23 @@ std::string short_sid(const SessionId& sid) {
   return hex_encode(sid.data(), 8);
 }
 
+// Peer-provided text is untrusted terminal input. Keep the stored/sent bytes
+// intact but neutralize control characters before rendering them.
+std::string display_safe(std::string_view value) {
+  std::string out;
+  out.reserve(value.size());
+  for (unsigned char c : value) {
+    if (c == '\t') {
+      out.push_back(' ');
+    } else if (c < 0x20 || c == 0x7f) {
+      out.push_back('?');
+    } else {
+      out.push_back(static_cast<char>(c));
+    }
+  }
+  return out;
+}
+
 }  // namespace
 
 ConsoleApp::ConsoleApp(NodeConfig config, Identity identity, const std::string& password)
@@ -47,24 +65,27 @@ ConsoleApp::~ConsoleApp() {
 
 void ConsoleApp::install_callbacks() {
   node_.on_system = [this](const std::string& text) {
-    std::cout << "\n[system] " << text << std::endl;
+    std::cout << "\n[system] " << display_safe(text) << std::endl;
   };
   node_.on_request = [this](const PendingRequestInfo& info) {
-    std::cout << "\n[request] " << info.name << " (" << info.fingerprint << ") wants to chat."
-              << "  /accept " << info.name << "   or   /decline " << info.name << std::endl;
+    const std::string name = display_safe(info.name);
+    std::cout << "\n[request] " << name << " (" << info.fingerprint << ") wants to chat."
+              << "  /accept " << name << "   or   /decline " << name << std::endl;
   };
   node_.on_session = [this](const SessionView& view) {
-    std::cout << "\n[session] " << view.label << "  sid " << short_sid(view.sid)
+    std::cout << "\n[session] " << display_safe(view.label) << "  sid " << short_sid(view.sid)
               << (view.group ? "  (group)" : "") << std::endl;
     select_session(view);
   };
   node_.on_message = [this](const IncomingMessage& message) {
     const std::string suffix = message.onion ? "  (via onion)" : "";
+    const std::string name = display_safe(message.from_name);
+    const std::string text = display_safe(message.text);
     if (message.group) {
-      std::cout << "\n[" << message.session_label << "] " << message.from_name << ": "
-                << message.text << suffix << std::endl;
+      std::cout << "\n[" << display_safe(message.session_label) << "] " << name << ": "
+                << text << suffix << std::endl;
     } else {
-      std::cout << "\n" << message.from_name << "> " << message.text << suffix << std::endl;
+      std::cout << "\n" << name << "> " << text << suffix << std::endl;
     }
   };
 }
@@ -127,8 +148,9 @@ void ConsoleApp::print_peers() const {
   std::cout << "\n #  NAME                 STATUS   FINGERPRINT        ENDPOINT\n";
   for (std::size_t i = 0; i < peers.size(); ++i) {
     const auto& peer = peers[i];
-    std::cout << " " << (i + 1) << "  " << peer.name;
-    std::cout << std::string(peer.name.size() < 20 ? 21 - peer.name.size() : 1, ' ');
+    const std::string name = display_safe(peer.name);
+    std::cout << " " << (i + 1) << "  " << name;
+    std::cout << std::string(name.size() < 20 ? 21 - name.size() : 1, ' ');
     std::cout << (peer.online ? "online " : "offline") << "  " << peer.fingerprint << "  "
               << (peer.endpoint.valid() ? peer.endpoint.to_string() : "-") << "\n";
   }
@@ -141,8 +163,9 @@ void ConsoleApp::print_requests() const {
     return;
   }
   for (const auto& request : requests) {
-    std::cout << "  " << request.name << "  " << request.fingerprint
-              << "   /accept " << request.name << "\n";
+    const std::string name = display_safe(request.name);
+    std::cout << "  " << name << "  " << request.fingerprint
+              << "   /accept " << name << "\n";
   }
 }
 
@@ -155,8 +178,9 @@ void ConsoleApp::print_sessions() const {
   std::cout << "\n #  LABEL                SID           STATE   TYPE\n";
   for (std::size_t i = 0; i < sessions.size(); ++i) {
     const auto& view = sessions[i];
-    std::cout << " " << (i + 1) << "  " << view.label
-              << std::string(view.label.size() < 20 ? 21 - view.label.size() : 1, ' ')
+    const std::string label = display_safe(view.label);
+    std::cout << " " << (i + 1) << "  " << label
+              << std::string(label.size() < 20 ? 21 - label.size() : 1, ' ')
               << short_sid(view.sid) << "      "
               << (view.active ? "active " : "history") << " " << (view.group ? "group" : "direct")
               << "\n";
@@ -175,13 +199,14 @@ void ConsoleApp::print_history(std::size_t limit) const {
   }
   std::cout << "\n";
   for (const auto& message : messages) {
-    std::cout << (message.outgoing ? "you> " : (message.from_name + "> ")) << message.text
+    const std::string name = display_safe(message.from_name);
+    std::cout << (message.outgoing ? "you> " : (name + "> ")) << display_safe(message.text)
               << "\n";
   }
 }
 
 void ConsoleApp::print_session_detail(const SessionView& view) const {
-  std::cout << "\n" << view.label << "  sid " << short_sid(view.sid)
+  std::cout << "\n" << display_safe(view.label) << "  sid " << short_sid(view.sid)
             << (view.active ? "  active" : "  history only")
             << (view.group ? "  group" : "  direct") << "\n";
   if (!view.group && !is_zero(view.peer_pk)) {
@@ -209,7 +234,7 @@ void ConsoleApp::send_active(const std::string& text) {
     std::cout << "\n[not sent] " << error << "\n";
     return;
   }
-  std::cout << "\nyou> " << text << "\n";
+  std::cout << "\nyou> " << display_safe(text) << "\n";
   if (onion) {
     std::cout << "[sent via " << relays << " relays]\n";
   } else {

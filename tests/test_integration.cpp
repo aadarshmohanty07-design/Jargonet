@@ -191,7 +191,7 @@ void run() {
 
   // ---------------------------------------------------------------- group chat
   nodes[0]->set_mode("direct");
-  nodes[1]->set_mode("direct");
+  nodes[1]->set_mode("auto");
   std::string group_invite = nodes[0]->create_group("team", error);
   CHECK(!group_invite.empty());
   auto group_sid_a = nodes[0]->resolve_session("team");
@@ -216,6 +216,22 @@ void run() {
     }
   }
   CHECK(group_seen);
+
+  // A group JOIN that arrives through an onion must not rewrite the joiner's
+  // endpoint to the delivery relay. Exercise that path, then send over onion.
+  messages_1.clear();
+  nodes[0]->set_mode("auto");
+  CHECK(nodes[0]->send_text(*group_sid_a, "group onion", error));
+  CHECK(wait_for(nodes, [&] { return has_message(messages_1, "group onion"); }));
+  bool group_onion_seen = false;
+  for (const auto& incoming : messages_1) {
+    if (incoming.text == "group onion") {
+      group_onion_seen = true;
+      CHECK(incoming.group);
+      CHECK(incoming.onion);
+    }
+  }
+  CHECK(group_onion_seen);
 
   // ---------------------------------------------------------------- panic wipe
   CHECK(nodes[4]->panic_wipe(error));

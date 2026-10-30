@@ -96,6 +96,9 @@ peers must re-establish the chat in that case.
   destruction, and the store key is wiped when the store closes.
 - Memory wiping is best-effort: strings in earlier allocations, crash dumps,
   hibernation files and the OS pagefile are outside the app's control.
+- The CLI neutralizes control characters in peer-supplied names and message
+  text before rendering them. This prevents terminal escape injection; it does
+  not alter the message bytes that are verified and stored.
 
 ### Panic wipe
 

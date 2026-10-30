@@ -7,6 +7,8 @@
 namespace jn {
 namespace {
 
+constexpr std::size_t kMaxGroupMembers = 256;
+
 std::string sid_key(const SessionId& sid) { return hex_encode(sid.data(), sid.size()); }
 
 GroupMember member_from(const StoredContact& contact) {
@@ -92,6 +94,7 @@ void SessionManager::add_member(Session& session, const GroupMember& member) {
       return;
     }
   }
+  if (session.members.size() >= kMaxGroupMembers) return;
   session.members.push_back(member);
   persist(session);
 }

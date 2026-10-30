@@ -574,6 +574,7 @@ void Node::handle_direct(const Packet& packet, const Endpoint& from) {
   }
   if (payload->from_pk == identity_.pk) return;
   const bool onion = (packet.flags & kFlagOnionDelivered) != 0;
+  const std::string sender_name = sanitize_name(payload->from_name);
 
   if (session->group) {
     bool known = false;
@@ -589,10 +590,10 @@ void Node::handle_direct(const Packet& packet, const Endpoint& from) {
       }
     }
     if (!known) {
-      GroupMember member{payload->from_pk, payload->sign_pk, payload->from_name};
+      GroupMember member{payload->from_pk, payload->sign_pk, sender_name};
       sessions_->add_member(*session, member);
       if (!onion) {
-        Peer& peer = peer_for(payload->from_pk, payload->from_name);
+        Peer& peer = peer_for(payload->from_pk, sender_name);
         peer.sign_pk = payload->sign_pk;
         mark_seen(peer, from);
         persist_contact(peer);
@@ -608,9 +609,9 @@ void Node::handle_direct(const Packet& packet, const Endpoint& from) {
   if (!session->group) {
     Peer& peer = peer_for(payload->from_pk);
     if (!onion) mark_seen(peer, from);
-    if (peer.name.empty()) peer.name = payload->from_name;
+    if (peer.name.empty()) peer.name = sender_name;
   } else if (!onion) {
-    Peer& peer = peer_for(payload->from_pk, payload->from_name);
+    Peer& peer = peer_for(payload->from_pk, sender_name);
     mark_seen(peer, from);
   }
 
@@ -619,7 +620,7 @@ void Node::handle_direct(const Packet& packet, const Endpoint& from) {
   StoredMessage stored;
   stored.sid = session->sid;
   stored.from_pk = payload->from_pk;
-  stored.from_name = payload->from_name;
+  stored.from_name = sender_name;
   stored.outgoing = false;
   stored.text = payload->text;
   stored.seq = payload->seq;
@@ -633,7 +634,7 @@ void Node::handle_direct(const Packet& packet, const Endpoint& from) {
   incoming.sid = session->sid;
   incoming.session_label = session->label;
   incoming.from_pk = payload->from_pk;
-  incoming.from_name = payload->from_name;
+  incoming.from_name = sender_name;
   incoming.text = payload->text;
   incoming.group = session->group;
   incoming.kind = payload->kind;
@@ -1120,6 +1121,9 @@ bool Node::send_group_message(Session& session, const std::string& text, ChatKin
   try {
     Packet direct = dispatcher_.build_direct(session, kind, text, msg_id, seq, 0);
     Bytes direct_wire = serialize_packet(direct);
+    Packet onion_inner = direct;
+    onion_inner.flags = static_cast<std::uint8_t>(onion_inner.flags | kFlagOnionDelivered);
+    Bytes onion_wire = serialize_packet(onion_inner);
     std::size_t sent = 0;
 
     for (const auto& member : session.members) {
@@ -1138,7 +1142,7 @@ bool Node::send_group_message(Session& session, const std::string& text, ChatKin
                                                  config_.onion_min_hops, config_.onion_max_hops);
         if (!selected.empty()) {
           std::string onion_error;
-          auto built = OnionRouter::build(selected, endpoint, direct_wire, onion_error);
+          auto built = OnionRouter::build(selected, endpoint, onion_wire, onion_error);
           if (built) {
             Packet onion;
             onion.type = PacketType::OnionData;
