@@ -12,6 +12,24 @@ your network identity; a local username is just a label.
 > [docs/SECURITY.md](docs/SECURITY.md) for the exact threat model and known
 > limitations.
 
+## LAN prototype: meshchat
+
+A standalone, one-binary LAN demo lives in [`meshchat/`](meshchat/README.md). It
+has real UDP broadcast discovery, direct `crypto_box_seal` messaging and
+layered onion routing through whichever peers are online, with hex relay output
+for live demos. It deliberately has no DHT, NAT traversal, sessions, groups or
+persistent identity.
+
+```bash
+cmake -S meshchat -B meshchat/build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build meshchat/build -j
+./meshchat/build/meshchat --name Alice --port 9001
+```
+
+See [`meshchat/README.md`](meshchat/README.md) for the four/six-instance demo,
+`--peers` fallback, relay output and security scope. It is a separate CMake
+project from the full Jargonet app.
+
 ## What works
 
 - Local identity: username + password, Argon2id-derived key, encrypted X25519
