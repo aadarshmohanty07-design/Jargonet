@@ -62,7 +62,8 @@ UdpSocket& UdpSocket::operator=(UdpSocket&& other) noexcept {
   return *this;
 }
 
-bool UdpSocket::open(std::uint16_t port, std::string& error) {
+bool UdpSocket::open(std::uint16_t port, std::string& error,
+                      const UdpSocketOptions& options) {
   close();
 #ifdef _WIN32
   if (!ensure_winsock(error)) return false;
@@ -74,6 +75,11 @@ bool UdpSocket::open(std::uint16_t port, std::string& error) {
   BOOL exclusive = FALSE;
   setsockopt(handle_, SOL_SOCKET, SO_EXCLUSIVEADDRUSE, reinterpret_cast<const char*>(&exclusive),
              sizeof(exclusive));
+  if (options.reuse_address) {
+    BOOL reuse = TRUE;
+    setsockopt(handle_, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<const char*>(&reuse),
+               sizeof(reuse));
+  }
 #else
   handle_ = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
   if (handle_ < 0) {
@@ -82,7 +88,25 @@ bool UdpSocket::open(std::uint16_t port, std::string& error) {
   }
   int reuse = 1;
   setsockopt(handle_, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
+#ifdef SO_REUSEPORT
+  if (options.reuse_port) {
+    setsockopt(handle_, SOL_SOCKET, SO_REUSEPORT, &reuse, sizeof(reuse));
+  }
 #endif
+#endif
+  if (options.broadcast) {
+    int broadcast = 1;
+#ifdef _WIN32
+    if (setsockopt(handle_, SOL_SOCKET, SO_BROADCAST,
+                   reinterpret_cast<const char*>(&broadcast), sizeof(broadcast)) != 0) {
+#else
+    if (setsockopt(handle_, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast)) != 0) {
+#endif
+      error = "cannot enable UDP broadcast";
+      close();
+      return false;
+    }
+  }
 
   sockaddr_in addr{};
   addr.sin_family = AF_INET;

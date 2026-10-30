@@ -30,6 +30,12 @@ struct Datagram {
   Bytes data;
 };
 
+struct UdpSocketOptions {
+  bool reuse_address = false;
+  bool reuse_port = false;
+  bool broadcast = false;
+};
+
 class UdpSocket {
  public:
   UdpSocket() = default;
@@ -41,7 +47,10 @@ class UdpSocket {
   UdpSocket& operator=(UdpSocket&& other) noexcept;
 
   // Binds on all IPv4 interfaces. port 0 selects an ephemeral port.
-  bool open(std::uint16_t port, std::string& error);
+  // reuse_address/reuse_port are for the shared discovery port; broadcast
+  // enables SO_BROADCAST for limited-broadcast HELLOs.
+  bool open(std::uint16_t port, std::string& error,
+            const UdpSocketOptions& options = {});
   void close();
 
   bool is_open() const;
