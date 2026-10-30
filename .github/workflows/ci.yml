@@ -63,5 +63,14 @@ jobs:
       - name: Real six-process LAN smoke test
         shell: pwsh
         run: |
-          $env:PATH = 'C:\msys64\ucrt64\bin;' + $env:PATH
+          $dll = Get-ChildItem -Path "$env:RUNNER_TEMP\msys64\ucrt64\bin" -Filter 'libsodium*.dll' -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $dll) {
+            $dll = Get-ChildItem -Path $env:RUNNER_TEMP -Filter 'libsodium*.dll' -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+          }
+          if ($dll) {
+            $env:PATH = $dll.DirectoryName + ';' + $env:PATH
+            Write-Host "libsodium DLL: $($dll.FullName)"
+          } else {
+            Write-Host "libsodium DLL not found; meshchat may fail to launch"
+          }
           python meshchat/tests/smoke.py meshchat/build/meshchat.exe
