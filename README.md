@@ -150,8 +150,8 @@ are online) to see the `sending via N relays` path.
 | `Node` | Event loop, peer table, reliability, rendezvous, relay role, group fan-out |
 | `ConsoleApp` | CLI |
 
-More detail: [docs/PROTOCOL.md](docs/PROTOCOL.md) and
-[docs/SECURITY.md](docs/SECURITY.md).
+More detail: [docs/PROTOCOL.md](docs/PROTOCOL.md),
+[docs/SECURITY.md](docs/SECURITY.md) and [docs/TESTING.md](docs/TESTING.md).
 
 ## Protocol at a glance
 
@@ -202,6 +202,10 @@ addresses. See [docs/SECURITY.md](docs/SECURITY.md) for the full list.
 - TURN/relay pools operated by third parties; relays are online peers.
 - Offline message delivery (content is never queued server-side).
 - Persistence of live session keys across restarts; re-establish the chat.
+- Persistence of peer endpoints (by design, to avoid storing IP addresses). After
+  a restart, use a rendezvous server or re-add the peer's invite.
+- Automated simulation of full-cone/symmetric NAT topologies; see the manual
+  matrix in [docs/TESTING.md](docs/TESTING.md).
 - Per-message forward secrecy (the epoch ratchet is coarse) and cover traffic.
 - A GUI. The CLI is the supported interface.
 

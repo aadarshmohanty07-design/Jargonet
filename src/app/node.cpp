@@ -994,7 +994,9 @@ bool Node::add_contact(const std::string& invite_code, std::string& error) {
   peer.sign_pk = invite->sign_pk;
   for (const auto& ep : invite->endpoints) add_endpoint(peer, ep);
   if (peer.endpoints.empty()) {
-    error = "contact added, but the invite has no reachable endpoint; configure a rendezvous server";
+    error = config_.rendezvous
+                ? "contact added; waiting for rendezvous discovery"
+                : "contact added, but the invite has no endpoint hint and no rendezvous server is configured";
   } else {
     error.clear();
   }

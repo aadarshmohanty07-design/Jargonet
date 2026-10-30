@@ -71,7 +71,9 @@ in-flight packets, then wiped. This limits exposure of past traffic after a
 device compromise, but it is **not** a Signal-style per-message double ratchet:
 a compromised live session can read messages in that epoch, and identity-key
 compromise aids future ratchet steps. Group sessions share one static key and
-have no forward secrecy; rotate by creating a new group invite.
+have no forward secrecy; rotate by creating a new group invite. A RATCHET
+control that is lost after all retransmits can desynchronize the epoch; the
+peers must re-establish the chat in that case.
 
 ## Local storage
 
