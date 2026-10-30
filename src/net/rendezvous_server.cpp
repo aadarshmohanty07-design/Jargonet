@@ -78,13 +78,6 @@ void RendezvousServer::handle_register(const msg::Value& request, const Endpoint
         send(from, make_error_response(id, "server full"));
         return;
       }
-      auto& count = tags_per_ip_[ip_key(from)];
-      if (count >= config_.max_tags_per_ip) {
-        tags_.erase(key);
-        send(from, make_error_response(id, "tag quota exceeded"));
-        return;
-      }
-      ++count;
     }
 
     const auto expires = std::chrono::steady_clock::now() + std::chrono::seconds(ttl);
@@ -152,11 +145,7 @@ void RendezvousServer::handle_unregister(const msg::Value& request, const Endpoi
       entries.erase(std::remove_if(entries.begin(), entries.end(),
                                    [&](const Entry& e) { return e.endpoint == from; }),
                     entries.end());
-      if (entries.empty()) {
-        tags_.erase(it);
-        auto count = tags_per_ip_.find(ip_key(from));
-        if (count != tags_per_ip_.end() && count->second > 0) --count->second;
-      }
+      if (entries.empty()) tags_.erase(it);
     }
     send(from, make_ok_response(id));
   } catch (const msg::Error&) {
@@ -185,7 +174,6 @@ void RendezvousServer::prune() {
       ++it;
     }
   }
-  std::erase_if(tags_per_ip_, [](const auto& pair) { return pair.second == 0; });
   next_prune_ = now + std::chrono::seconds(5);
 }
 
@@ -196,6 +184,7 @@ void RendezvousServer::run_once(int timeout_ms) {
   if (!socket_.wait_readable(timeout_ms)) return;
   auto datagram = socket_.recv_from();
   if (!datagram) return;
+  if (datagram->data.size() > 4096) return;
   if (!allow_request(datagram->from)) return;
 
   auto message = decode_rendezvous(datagram->data);

@@ -21,7 +21,6 @@ class RendezvousServer {
     std::uint32_t default_ttl_seconds = 120;
     std::uint32_t max_ttl_seconds = 600;
     std::size_t max_entries_per_tag = 8;
-    std::size_t max_tags_per_ip = 64;
     std::size_t max_tags_total = 100000;
   };
 
@@ -61,7 +60,6 @@ class RendezvousServer {
   UdpSocket socket_;
   std::unordered_map<std::string, TagState> tags_;
   std::unordered_map<std::string, IpState> ip_windows_;
-  std::unordered_map<std::string, std::size_t> tags_per_ip_;
   std::chrono::steady_clock::time_point next_prune_;
 };
 

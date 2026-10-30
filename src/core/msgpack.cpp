@@ -67,6 +67,18 @@ class Reader {
 
   void skip(std::size_t n) { (void)raw(n); }
 
+  void require_elements(std::size_t count) const {
+    if (count > kMaxContainerElements || count > remaining()) {
+      throw Error("msgpack array is truncated or too large");
+    }
+  }
+
+  void require_pairs(std::size_t count) const {
+    if (count > kMaxContainerElements || count > remaining() / 2) {
+      throw Error("msgpack map is truncated or too large");
+    }
+  }
+
   Value read(int depth) {
     if (depth > kMaxDepth) throw Error("msgpack nesting too deep");
     const std::uint8_t marker = u8();
@@ -76,6 +88,7 @@ class Reader {
 
     if ((marker & 0xf0) == 0x80) {
       const std::size_t n = marker & 0x0f;
+      require_pairs(n);
       Value v;
       v.type = Value::Type::Map;
       v.map.reserve(n);
@@ -89,6 +102,7 @@ class Reader {
     }
     if ((marker & 0xf0) == 0x90) {
       const std::size_t n = marker & 0x0f;
+      require_elements(n);
       Value v;
       v.type = Value::Type::Array;
       v.array.reserve(n);
@@ -191,6 +205,7 @@ class Reader {
       }
       case 0xdc: {
         const std::size_t n = u16();
+        require_elements(n);
         Value v;
         v.type = Value::Type::Array;
         v.array.reserve(n);
@@ -199,7 +214,7 @@ class Reader {
       }
       case 0xdd: {
         const std::size_t n = u32();
-        if (n > kMaxDecodeBytes / 4) throw Error("msgpack array too large");
+        require_elements(n);
         Value v;
         v.type = Value::Type::Array;
         v.array.reserve(n);
@@ -208,6 +223,7 @@ class Reader {
       }
       case 0xde: {
         const std::size_t n = u16();
+        require_pairs(n);
         Value v;
         v.type = Value::Type::Map;
         v.map.reserve(n);
@@ -221,7 +237,7 @@ class Reader {
       }
       case 0xdf: {
         const std::size_t n = u32();
-        if (n > kMaxDecodeBytes / 4) throw Error("msgpack map too large");
+        require_pairs(n);
         Value v;
         v.type = Value::Type::Map;
         v.map.reserve(n);

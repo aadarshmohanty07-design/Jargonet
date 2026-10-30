@@ -60,7 +60,7 @@ Bytes encode_rendezvous(const msg::Value& value) {
 }
 
 std::optional<msg::Value> decode_rendezvous(const std::uint8_t* data, std::size_t size) {
-  if (!data || size < kRendezvousHeaderBytes) return std::nullopt;
+  if (!data || size < kRendezvousHeaderBytes || size > 4096) return std::nullopt;
   if (std::memcmp(data, kRendezvousMagic, kRendezvousHeaderBytes) != 0) return std::nullopt;
   try {
     return msg::decode(data + kRendezvousHeaderBytes, size - kRendezvousHeaderBytes);

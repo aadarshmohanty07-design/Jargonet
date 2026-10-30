@@ -98,7 +98,10 @@ Bytes encode(const Value& value);
 Value decode(const std::uint8_t* data, std::size_t size);
 Value decode(const Bytes& data);
 
-constexpr std::size_t kMaxDecodeBytes = 1u << 20;
+// Local encrypted stores can legitimately exceed 1 MiB. Network-facing callers
+// cap their inputs far below this (1200-byte packets, 4 KiB rendezvous frames).
+constexpr std::size_t kMaxDecodeBytes = 64u << 20;
+constexpr std::size_t kMaxContainerElements = 1u << 20;
 constexpr int kMaxDepth = 16;
 
 }  // namespace jn::msg

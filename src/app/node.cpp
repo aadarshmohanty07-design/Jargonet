@@ -1268,6 +1268,7 @@ bool Node::send_text(const SessionId& sid, const std::string& text, std::string&
     } else {
       Packet direct = dispatcher_.build_direct(*session, ChatKind::Chat, message, msg_id, seq, 0);
       if (!track_reliable(direct, endpoint)) {
+        pending_wire_.erase(direct.msg_id);
         error = "UDP send failed";
         return false;
       }

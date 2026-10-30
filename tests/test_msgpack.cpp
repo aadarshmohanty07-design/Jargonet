@@ -86,6 +86,15 @@ void run() {
   Value short_pk = decode(pk_writer.take());
   CHECK_THROWS(short_pk.at("pk").as_public_key());
 
+  // Large local values are supported; container counts cannot force huge
+  // allocations from a tiny input.
+  Writer large_writer;
+  large_writer.bin(Bytes(2 * 1024 * 1024, 0xAA));
+  Value large_value = decode(large_writer.take());
+  CHECK(large_value.as_bin().size() == 2 * 1024 * 1024);
+  CHECK_THROWS(decode(Bytes{0xdd, 0xff, 0xff, 0xff, 0xff}));
+  CHECK_THROWS(decode(Bytes{0xdf, 0xff, 0xff, 0xff, 0xff}));
+
   // Deep nesting is bounded.
   Bytes deep;
   for (int i = 0; i < 20; ++i) {

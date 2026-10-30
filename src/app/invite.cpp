@@ -36,6 +36,10 @@ std::vector<Endpoint> endpoints_from_value(const msg::Value* value) {
 }
 
 std::string decode_body(std::string_view code, const char* prefix, std::string& error) {
+  if (code.size() > 8192) {
+    error = "invite code is too large";
+    return {};
+  }
   std::string trimmed = trim(code);
   if (trimmed.rfind(prefix, 0) != 0) {
     error = "not a Jargonet invite code";
@@ -159,8 +163,10 @@ std::optional<GroupInvite> decode_group_invite(std::string_view code, std::strin
     GroupInvite invite;
     invite.sid = root.at("sid").as_session_id();
     invite.group_key = root.at("key").as_bin();
-    if (invite.group_key.size() != 32) {
-      error = "group key has an invalid length";
+    if (invite.group_key.size() != 32 || is_zero(invite.sid) ||
+        std::all_of(invite.group_key.begin(), invite.group_key.end(),
+                    [](std::uint8_t byte) { return byte == 0; })) {
+      error = "group invite has an invalid session id or key";
       return std::nullopt;
     }
     invite.label = root.at("n").as_str();

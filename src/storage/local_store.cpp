@@ -18,9 +18,9 @@ constexpr std::size_t kMagicLen = sizeof(kMagic);
 constexpr std::uint8_t kVersion = 1;
 constexpr std::size_t kMaxContacts = 1024;
 constexpr std::size_t kMaxSessions = 512;
-constexpr std::size_t kMaxMessagesTotal = 200000;
+constexpr std::size_t kMaxMessagesTotal = 20000;
 constexpr std::size_t kMaxMessagesPerSession = 5000;
-constexpr std::size_t kMaxTextBytes = 8192;
+constexpr std::size_t kMaxTextBytes = 2048;
 
 void put_u64(Bytes& out, std::uint64_t v) {
   for (int i = 7; i >= 0; --i) out.push_back(static_cast<std::uint8_t>(v >> (i * 8)));

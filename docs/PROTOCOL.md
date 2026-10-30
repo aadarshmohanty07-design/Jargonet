@@ -128,7 +128,8 @@ Responses:
 - `{"t":"ok","id":u64}` / `{"t":"err","id":u64,"msg":str}`
 
 Entries expire (default 120 seconds, capped at 600). The server applies per-IP
-rate and tag quotas, caps endpoints per tag and never logs IP addresses. It
+rate limits, caps endpoints per tag and the total tag count, and never logs IP
+addresses. It
 cannot decrypt anything and never receives public keys, usernames, session ids
 or content.
 
