@@ -95,6 +95,29 @@ find_package(Threads REQUIRED)
 target_link_libraries(jargonet_core PUBLIC Threads::Threads)
 
 # ---------------------------------------------------------------------------
+# meshchat terminal UI (event-driven frontend, no crypto/network code)
+# ---------------------------------------------------------------------------
+add_library(jargonet_ui STATIC
+  src/ui/app.cpp
+  src/ui/commands.cpp
+  src/ui/renderer.cpp
+)
+target_include_directories(jargonet_ui PUBLIC src)
+target_link_libraries(jargonet_ui PUBLIC Threads::Threads)
+target_compile_definitions(jargonet_ui PUBLIC
+  $<$<PLATFORM_ID:Windows>:WIN32_LEAN_AND_MEAN>
+  $<$<PLATFORM_ID:Windows>:NOMINMAX>)
+
+if(MSVC)
+  target_compile_options(jargonet_ui PRIVATE /W4 /permissive-)
+else()
+  target_compile_options(jargonet_ui PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+add_executable(meshchat-ui src/ui/meshchat_main.cpp)
+target_link_libraries(meshchat-ui PRIVATE jargonet_ui)
+
+# ---------------------------------------------------------------------------
 # Executables
 # ---------------------------------------------------------------------------
 add_executable(jargonet src/main.cpp src/ui/console.cpp)
@@ -127,4 +150,9 @@ if(JARGONET_BUILD_TESTS)
     add_test(NAME ${_test} COMMAND ${_test})
     set_tests_properties(${_test} PROPERTIES TIMEOUT 120)
   endforeach()
+
+  add_executable(test_ui tests/test_ui.cpp)
+  target_link_libraries(test_ui PRIVATE jargonet_ui)
+  add_test(NAME test_ui COMMAND test_ui)
+  set_tests_properties(test_ui PROPERTIES TIMEOUT 120)
 endif()
