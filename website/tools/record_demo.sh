@@ -7,6 +7,8 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 BIN="$(cd "$(dirname "$BIN")" && pwd)/$(basename "$BIN")"
 SESSION="meshchat-demo"
 ASCIINEMA="${ASCIINEMA:-asciinema}"
+export TERM=xterm-256color
+export COLORTERM=truecolor
 
 if ! command -v "$ASCIINEMA" >/dev/null 2>&1; then
   echo "asciinema is required (pip install asciinema)" >&2
@@ -60,4 +62,14 @@ if [[ ! -s "$OUT" ]]; then
   echo "recording did not produce a cast file" >&2
   exit 1
 fi
+if grep -q "open terminal failed" "$OUT"; then
+  echo "recording captured a tmux terminal error" >&2
+  exit 1
+fi
+for needle in "/peers" "hello through the mesh" "[HOP ]" "still works"; do
+  if ! grep -q "$needle" "$OUT"; then
+    echo "recording is missing expected demo output: $needle" >&2
+    exit 1
+  fi
+done
 echo "recorded $(wc -c < "$OUT") bytes to $OUT"
