@@ -18,5 +18,6 @@ __pycache__/
 meshchat/build/
 /src/ui/
 /tests/test_ui.cpp
-/dist/
 meshchat/build-*/
+/dist/meshchat-linux-x86_64/
+/dist/meshchat-windows-x86_64/
