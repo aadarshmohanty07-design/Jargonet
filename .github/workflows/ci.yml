@@ -5,21 +5,6 @@ on:
   pull_request:
 
 jobs:
-  linux:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y cmake ninja-build g++ libsodium-dev
-      - name: Configure
-        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo
-      - name: Build
-        run: cmake --build build -j 4
-      - name: Test
-        run: ctest --test-dir build --output-on-failure
-
   meshchat-linux:
     runs-on: ubuntu-latest
     steps:
@@ -27,15 +12,47 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake ninja-build g++ libsodium-dev python3
-      - name: Configure
-        run: cmake -S meshchat -B meshchat/build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          sudo apt-get install -y cmake ninja-build g++ libsodium-dev python3 tmux iproute2 net-tools
+      - name: Configure fresh clone (meshchat only)
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo
       - name: Build
-        run: cmake --build meshchat/build -j 4
-      - name: Real six-process LAN smoke test
-        run: python3 meshchat/tests/smoke.py meshchat/build/meshchat
+        run: cmake --build build -j 4
+      - name: Assert the root build is meshchat-only
+        run: |
+          test -x build/meshchat
+          test ! -e build/jargonet
+          test ! -e build/meshchat-ui
+      - name: Six-process smoke test (incl. failure modes)
+        run: python3 meshchat/tests/smoke.py build/meshchat
+      - name: Pre-demo environment check
+        run: bash meshchat/check_demo.sh --binary build/meshchat
+      - name: Demo launcher layout and /peers
+        run: |
+          bash meshchat/run_demo.sh --bin "$PWD/build/meshchat" --no-attach
+          sleep 6
+          titles="$(tmux list-panes -t meshchat-demo -F '#{pane_title}')"
+          printf '%s\n' "$titles"
+          for title in Alice Bob R1 R2; do
+            printf '%s\n' "$titles" | grep -qx "$title"
+          done
+          tmux send-keys -t meshchat-demo:0.0 '/peers' Enter
+          sleep 1
+          tmux capture-pane -p -S -60 -t meshchat-demo:0.0 > /tmp/alice_pane.txt
+          cat /tmp/alice_pane.txt
+          for name in Alice Bob R1 R2; do
+            grep -q "$name" /tmp/alice_pane.txt
+          done
+          tmux kill-session -t meshchat-demo
+      - name: Build Linux bundle
+        run: bash meshchat/make_dist.sh
+      - name: Upload Linux bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: meshchat-linux-x86_64
+          path: dist/meshchat-linux-x86_64.tar.gz
+          if-no-files-found: error
 
-  windows:
+  meshchat-windows:
     runs-on: windows-latest
     defaults:
       run:
@@ -50,27 +67,33 @@ jobs:
             mingw-w64-ucrt-x86_64-cmake
             mingw-w64-ucrt-x86_64-ninja
             mingw-w64-ucrt-x86_64-libsodium
-      - name: Configure
+      - name: Configure fresh clone (meshchat only)
         run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo
       - name: Build
         run: cmake --build build -j 4
-      - name: Test
-        run: ctest --test-dir build --output-on-failure
-      - name: Build meshchat
+      - name: Assert the root build is meshchat-only
         run: |
-          cmake -S meshchat -B meshchat/build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo
-          cmake --build meshchat/build -j 4
-      - name: Real six-process LAN smoke test
+          test -x build/meshchat.exe
+          test ! -e build/jargonet.exe
+          test ! -e build/meshchat-ui.exe
+      - name: Six-process smoke test (incl. failure modes)
         shell: pwsh
         run: |
-          $dll = Get-ChildItem -Path "$env:RUNNER_TEMP\msys64\ucrt64\bin" -Filter 'libsodium*.dll' -ErrorAction SilentlyContinue | Select-Object -First 1
-          if (-not $dll) {
-            $dll = Get-ChildItem -Path $env:RUNNER_TEMP -Filter 'libsodium*.dll' -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
-          }
-          if ($dll) {
-            $env:PATH = $dll.DirectoryName + ';' + $env:PATH
-            Write-Host "libsodium DLL: $($dll.FullName)"
-          } else {
-            Write-Host "libsodium DLL not found; meshchat may fail to launch"
-          }
-          python meshchat/tests/smoke.py meshchat/build/meshchat.exe
+          $env:PATH = "$env:RUNNER_TEMP\msys64\ucrt64\bin;" + $env:PATH
+          python meshchat/tests/smoke.py build/meshchat.exe
+      - name: Pre-demo environment check
+        shell: pwsh
+        run: |
+          $env:PATH = "$env:RUNNER_TEMP\msys64\ucrt64\bin;" + $env:PATH
+          pwsh -NoProfile -File meshchat/check_demo.ps1 -Bin build/meshchat.exe
+      - name: Build Windows bundle
+        shell: pwsh
+        run: |
+          $env:PATH = "$env:RUNNER_TEMP\msys64\ucrt64\bin;" + $env:PATH
+          pwsh -NoProfile -File meshchat/make_dist.ps1 -Bin build/meshchat.exe -OutDir dist -SodiumDir "$env:RUNNER_TEMP\msys64\ucrt64"
+      - name: Upload Windows bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: meshchat-windows-x86_64
+          path: dist/meshchat-windows-x86_64.zip
+          if-no-files-found: error

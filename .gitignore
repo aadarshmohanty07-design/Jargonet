@@ -16,3 +16,7 @@ Testing/
 __pycache__/
 *.pyc
 meshchat/build/
+/src/ui/
+/tests/test_ui.cpp
+/dist/
+meshchat/build-*/

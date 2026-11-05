@@ -156,20 +156,27 @@ bool MeshNode::start(std::string& error) {
     return false;
   }
 
-  UdpSocketOptions discovery_options;
-  discovery_options.reuse_address = true;
-  discovery_options.reuse_port = true;
-  discovery_options.broadcast = true;
-  std::string discovery_error;
-  if (!discovery_.open(kDiscoveryPort, discovery_error, discovery_options)) {
-    if (config_.seeds.empty()) {
-      error = "cannot bind UDP discovery :" + std::to_string(kDiscoveryPort) + " (" +
-              discovery_error +
-              "). Close the other process or pass --peers <ip:port,...> as a fallback.";
-      return false;
+  if (config_.broadcast) {
+    UdpSocketOptions discovery_options;
+    discovery_options.reuse_address = true;
+    discovery_options.reuse_port = true;
+    discovery_options.broadcast = true;
+    std::string discovery_error;
+    if (!discovery_.open(kDiscoveryPort, discovery_error, discovery_options)) {
+      if (config_.seeds.empty()) {
+        error = "cannot bind UDP discovery :" + std::to_string(kDiscoveryPort) + " (" +
+                discovery_error +
+                "). Close the other process or pass --peers <ip:port,...> as a fallback.";
+        return false;
+      }
+      emit_notice("broadcast discovery unavailable (" + discovery_error +
+                  "); using manual peers");
     }
-    emit_notice("broadcast discovery unavailable (" + discovery_error +
-                "); using manual peers");
+  } else if (config_.seeds.empty()) {
+    error = "broadcast is disabled and no --peers seeds were given";
+    return false;
+  } else {
+    emit_notice("UDP broadcast disabled; using --peers only");
   }
 
   std::string unicast_error;
@@ -371,6 +378,21 @@ void MeshNode::handle_hello(const Bytes& payload, const Endpoint& from,
     PublicKey pk{};
     std::copy(pk_bytes.begin(), pk_bytes.end(), pk.begin());
     if (pk == key_.pk || !CryptoEngine::valid_public_key(pk)) return;
+    if (iequals(name, name_)) {
+      // Names are display labels. Resolve a collision deterministically by
+      // public key so only one node yields; no protocol change is needed.
+      if (std::lexicographical_compare(pk.begin(), pk.end(), key_.pk.begin(),
+                                       key_.pk.end())) {
+        if (on_fatal) {
+          on_fatal("duplicate peer name '" + name + "' detected; this node (" +
+                   short_fingerprint() + ") is exiting. Choose a unique --name.");
+        }
+      } else {
+        emit_notice("duplicate peer name '" + name +
+                    "' seen; the higher-fingerprint instance will yield");
+      }
+      return;
+    }
     const std::uint64_t port_value = root.at("p").as_uint();
     if (port_value == 0 || port_value > 65535 || port_value == kDiscoveryPort) return;
     if (from.host.empty() || from.host.size() > 64) return;

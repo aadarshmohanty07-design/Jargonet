@@ -23,12 +23,15 @@ REQUESTED_RELAYS = 2
 
 
 class Proc:
-    def __init__(self, binary, name, port):
+    def __init__(self, binary, name, port, extra=None):
         self.name = name
         self.buf = ""
         self.lock = threading.Lock()
+        args = [binary, "--name", name, "--port", str(port), "--no-color"]
+        if extra:
+            args.extend(extra)
         self.p = subprocess.Popen(
-            [binary, "--name", name, "--port", str(port), "--no-color"],
+            args,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -105,6 +108,54 @@ def main():
         print("binary not found:", binary)
         return 2
 
+    # ---- failure-mode checks that must run without the main six nodes ----
+    extras = []
+    try:
+        dup_a = Proc(binary, "SameName", 19201)
+        extras.append(dup_a)
+        dup_b = Proc(binary, "SameName", 19202)
+        extras.append(dup_b)
+        deadline = time.time() + 8
+        while time.time() < deadline:
+            exited = [p for p in (dup_a, dup_b) if p.p.poll() is not None]
+            if exited:
+                break
+            time.sleep(0.1)
+        exited = [p for p in (dup_a, dup_b) if p.p.poll() is not None]
+        survivors = [p for p in (dup_a, dup_b) if p.p.poll() is None]
+        if len(exited) != 1 or len(survivors) != 1:
+            print("duplicate names did not resolve to exactly one exiting node")
+            print("A:")
+            print(dup_a.text()[-2500:])
+            print("B:")
+            print(dup_b.text()[-2500:])
+            return 1
+        if "duplicate peer name" not in exited[0].text():
+            print("duplicate node exited without a clear error:")
+            print(exited[0].text()[-2500:])
+            return 1
+        survivors[0].quit()
+        print("duplicate-name handling: OK")
+
+        extras.clear()
+        seed_a = Proc(binary, "SeedA", 19211, ["--no-broadcast", "--peers", "127.0.0.1:19212"])
+        extras.append(seed_a)
+        seed_b = Proc(binary, "SeedB", 19212, ["--no-broadcast", "--peers", "127.0.0.1:19211"])
+        extras.append(seed_b)
+        if not (seed_a.wait_for("SeedB", 8) and seed_b.wait_for("SeedA", 8)):
+            print("--peers without broadcast did not connect")
+            print("A:")
+            print(seed_a.text()[-2500:])
+            print("B:")
+            print(seed_b.text()[-2500:])
+            return 1
+        seed_a.quit()
+        seed_b.quit()
+        print("manual --peers without broadcast: OK")
+    finally:
+        for extra in extras:
+            extra.quit()
+
     procs = {}
     try:
         for name, port in zip(NAMES, PORTS):
@@ -121,7 +172,7 @@ def main():
             discovered_all = True
             for name, proc in procs.items():
                 line = latest_online(proc.text())
-                if not line or any(other not in line for other in NAMES if other != name):
+                if not line or name not in line or any(other not in line for other in NAMES if other != name):
                     discovered_all = False
                     break
             if discovered_all:
@@ -129,7 +180,7 @@ def main():
             time.sleep(0.2)
         for name, proc in procs.items():
             line = latest_online(proc.text())
-            if not line or any(other not in line for other in NAMES if other != name):
+            if not line or name not in line or any(other not in line for other in NAMES if other != name):
                 print("{} did not discover everyone; latest list: {}".format(name, line))
                 print(proc.text()[-4000:])
                 return 1
@@ -142,6 +193,15 @@ def main():
             print("direct message was not received:\n" + bob.text()[-3000:])
             return 1
         print("direct sealed message: OK")
+
+        alice.send("send Bob " + ("L" * 3000))
+        if not alice.wait_for("[not sent]", 5) or "too long" not in alice.text():
+            print("long message was not rejected cleanly:\n" + alice.text()[-2500:])
+            return 1
+        if alice.p.poll() is not None:
+            print("alice crashed while rejecting a long message")
+            return 1
+        print("long message rejection: OK")
 
         # Two-relay onion message.
         alice_route_start = len(alice.text())

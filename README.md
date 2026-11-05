@@ -1,4 +1,23 @@
+The submission binary is meshchat/. Everything else in this repository is out of scope for this deadline.
+
 # Jargonet
+
+## Submission build
+
+```bash
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j
+./build/meshchat --name Alice --port 9001
+```
+
+This root build produces **only** `meshchat`; the historical Jargonet sources
+are not built. Portable bundles and the operator runbook are produced by
+`meshchat/make_dist.sh` / `meshchat/make_dist.ps1`.
+
+Operator docs: [DEMO.md](meshchat/DEMO.md),
+[TROUBLESHOOTING.md](meshchat/TROUBLESHOOTING.md),
+[KNOWN_ISSUES.md](meshchat/KNOWN_ISSUES.md), and
+[meshchat/README.md](meshchat/README.md).
 
 [![ci](https://github.com/aadarshmohanty07-design/Jargonet/actions/workflows/ci.yml/badge.svg)](https://github.com/aadarshmohanty07-design/Jargonet/actions/workflows/ci.yml)
 

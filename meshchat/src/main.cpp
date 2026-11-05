@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cctype>
+#include <chrono>
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>
@@ -7,6 +8,7 @@
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <thread>
 #include <vector>
 
 #ifdef _WIN32
@@ -87,9 +89,12 @@ class Printer {
   bool prompts_;
 };
 
-std::string format_peers(const std::vector<PeerInfo>& peers) {
-  if (peers.empty()) return "Online: (none)";
-  std::string out = "Online: ";
+std::string format_peers(const std::vector<PeerInfo>& peers, const std::string& self_name,
+                         const std::string& self_fp) {
+  // The self entry is display-only; routing and target resolution still use
+  // the actual peer map.
+  std::string out = "Online: " + self_name + " (you, " + self_fp + ")";
+  if (!peers.empty()) out += ", ";
   for (std::size_t i = 0; i < peers.size(); ++i) {
     if (i != 0) out += ", ";
     out += peers[i].name + " (" + peers[i].short_fingerprint() + ")";
@@ -102,11 +107,15 @@ void print_usage(const char* program) {
       << "meshchat - real LAN onion-routing prototype\n\n"
       << "Usage:\n"
       << "  " << program
-      << " --name Alice [--port 9001] [--peers ip:port,...] [--no-color]\n\n"
+      << " --name Alice [--port 9001] [--peers ip:port,...] [--no-color]\n"
+      << "         [--no-broadcast] [--run-for N]\n\n"
       << "  --name NAME       display name (letters, digits, _ or -)\n"
       << "  --port PORT       unicast UDP port (default: ephemeral, advertised in HELLO)\n"
       << "  --peers LIST      manual unicast seeds for broadcast-isolated networks\n"
-      << "  --no-color        plain output\n\n"
+      << "  --no-broadcast    skip UDP discovery; requires --peers\n"
+      << "  --run-for N       run for N seconds without reading stdin (checks/CI)\n"
+      << "  --no-color        plain output\n"
+      << "  --version         print version and exit\n\n"
       << "Commands:\n"
       << "  send <name> <message> [--relays N] [--verbose-route]\n"
       << "  peers\n"
@@ -202,6 +211,7 @@ int main(int argc, char** argv) {
   MeshNode::Config config;
   bool no_color = false;
   bool have_name = false;
+  int run_for_seconds = 0;
 
   for (int i = 1; i < argc; ++i) {
     const std::string arg = argv[i];
@@ -229,8 +239,24 @@ int main(int argc, char** argv) {
         return 1;
       }
       config.seeds.insert(config.seeds.end(), seeds.begin(), seeds.end());
+    } else if (arg == "--no-broadcast") {
+      config.broadcast = false;
+    } else if (arg == "--run-for") {
+      try {
+        run_for_seconds = std::stoi(next_value("--run-for"));
+      } catch (...) {
+        std::cerr << "invalid --run-for\n";
+        return 1;
+      }
+      if (run_for_seconds < 0 || run_for_seconds > 3600) {
+        std::cerr << "--run-for must be between 0 and 3600\n";
+        return 1;
+      }
     } else if (arg == "--no-color") {
       no_color = true;
+    } else if (arg == "--version" || arg == "-v") {
+      std::cout << "meshchat 0.1.0\n";
+      return 0;
     } else if (arg == "--help" || arg == "-h") {
       print_usage(argv[0]);
       return 0;
@@ -251,23 +277,25 @@ int main(int argc, char** argv) {
   if (color) color = enable_virtual_terminal();
   Printer printer(color, stdin_is_tty());
   MeshNode node(config);
+  const std::string self_name = node.name();
+  const std::string self_fp = node.short_fingerprint();
 
   try {
-    node.on_peers = [&printer](const std::vector<PeerInfo>& peers) {
-      printer.line(kCyan, format_peers(peers), true);
+    node.on_peers = [&printer, self_name, self_fp](const std::vector<PeerInfo>& peers) {
+      printer.line(kCyan, format_peers(peers, self_name, self_fp), true);
     };
     node.on_peer_offline = [&printer](const std::string& name) {
       printer.line(kYellow, "[offline] " + name, true);
     };
-    node.on_message = [&printer, self = node.name()](const std::string& from,
+    node.on_message = [&printer, self = self_name](const std::string& from,
                                                     const std::string& text,
                                                     std::uint64_t hops) {
-      std::string line = "[" + self + "] " + from + ": " + text;
+      std::string line = "[RECV] [" + self + "] " + from + ": " + text;
       if (hops > 0) line += " (via " + std::to_string(hops) + " relays)";
       printer.line(kGreen, line, true);
     };
     node.on_relay = [&printer](const RelayReport& report) {
-      std::string line = "[RELAY] received " + std::to_string(report.received_bytes) +
+      std::string line = "[HOP ] [RELAY] received " + std::to_string(report.received_bytes) +
                          " bytes from " + report.previous + " -> next " + report.next_name +
                          " (" + report.next_endpoint.to_string() + ") | forwarded " +
                          hex_encode(report.forwarded);
@@ -284,6 +312,10 @@ int main(int argc, char** argv) {
     node.on_error = [&printer](const std::string& text) {
       printer.line(kRed, "[error] " + text, true);
     };
+    node.on_fatal = [&printer](const std::string& text) {
+      printer.line(kRed, "[fatal] " + text);
+      std::exit(1);
+    };
 
     std::string error;
     if (!node.start(error)) {
@@ -292,17 +324,32 @@ int main(int argc, char** argv) {
     }
 
     printer.line(kCyan, "meshchat  " + node.name() + "  [" + node.short_fingerprint() + "]");
+    const std::string discovery_line =
+        node.broadcast_enabled()
+            ? "  discovery UDP " + std::to_string(node.discovery_port()) +
+                  "  (broadcast every 2s)"
+            : "  UDP broadcast disabled (manual peers)";
     printer.line(kCyan, "unicast UDP " + std::to_string(node.unicast_port()) +
-                            "  discovery UDP " + std::to_string(node.discovery_port()) +
-                            "  (broadcast every 2s)");
+                            discovery_line);
     printer.line(kGray,
-                 "send <name> <message> [--relays N] [--verbose-route] | peers | quit");
+                 "/send <name> <message> [--relays N] [--verbose-route] | /peers | /quit");
+    printer.line(kCyan, format_peers(node.peers(), self_name, self_fp));
+    if (run_for_seconds > 0) {
+      const auto deadline = std::chrono::steady_clock::now() +
+                            std::chrono::seconds(run_for_seconds);
+      while (std::chrono::steady_clock::now() < deadline) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      }
+      node.stop();
+      return 0;
+    }
     printer.prompt();
 
     std::string line;
     bool quit = false;
     while (!quit && std::getline(std::cin, line)) {
-      const std::string trimmed = trim(line);
+      std::string trimmed = trim(line);
+      if (!trimmed.empty() && trimmed.front() == '/') trimmed.erase(trimmed.begin());
       if (trimmed.empty()) {
         printer.prompt();
         continue;
@@ -312,13 +359,13 @@ int main(int argc, char** argv) {
         break;
       }
       if (trimmed == "peers") {
-        printer.line(kCyan, format_peers(node.peers()));
+        printer.line(kCyan, format_peers(node.peers(), self_name, self_fp));
         printer.prompt();
         continue;
       }
       if (trimmed == "help" || trimmed == "?") {
         printer.line(kGray,
-                     "send <name> <message> [--relays N] [--verbose-route] | peers | quit");
+                     "/send <name> <message> [--relays N] [--verbose-route] | /peers | /quit");
         printer.prompt();
         continue;
       }

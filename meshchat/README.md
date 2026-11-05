@@ -14,7 +14,7 @@ socket primitives from the parent project.
      |                                         ^
      | sealed onion                            | direct sealed payload
      v                                         |
-   Relay1  --------- opaque blob --------->  Relay2
+   R1  --------- opaque blob --------->  R2
 ```
 
 ## Build
@@ -26,6 +26,14 @@ sudo apt install cmake ninja-build g++ libsodium-dev
 # macOS
 brew install cmake ninja libsodium
 
+# The repository root builds meshchat only.
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j
+# binary: build/meshchat (build/meshchat.exe on Windows)
+```
+
+The standalone project also works:
+```bash
 cmake -S meshchat -B meshchat/build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build meshchat/build -j
 ```
@@ -49,8 +57,8 @@ port 9999.
 ```bash
 ./meshchat/build/meshchat --name Alice  --port 9001
 ./meshchat/build/meshchat --name Bob    --port 9002
-./meshchat/build/meshchat --name Relay1 --port 9003
-./meshchat/build/meshchat --name Relay2 --port 9004
+./meshchat/build/meshchat --name R1 --port 9003
+./meshchat/build/meshchat --name R2 --port 9004
 ```
 
 Each instance broadcasts a plaintext HELLO (`name`, `pubkey`, `unicast port`) to
@@ -66,11 +74,13 @@ four panes in tmux; `meshchat/run_demo.ps1` opens four Windows console windows.
 
 | Command | Meaning |
 | --- | --- |
-| `send <name> <message>` | Direct sealed UDP message |
-| `send <name> <message> --relays 2` | Route through two online peers |
-| `send <name> <message> --relays 2 --verbose-route` | Also print the full path |
-| `peers` | Reprint the online peer list |
-| `quit` | Broadcast BYE and exit |
+| `/send <name> <message>` | Direct sealed UDP message |
+| `/send <name> <message> --relays 2` | Route through two online peers |
+| `/send <name> <message> --relays 2 --verbose-route` | Also print the full path |
+| `/peers` | Reprint the online peer list |
+| `/quit` | Broadcast BYE and exit |
+
+The bare forms (`send`, `peers`, `quit`) remain accepted.
 
 If the requested number of relays is unavailable, the sender uses as many as
 are online. If none are online, it sends directly. Every node relays
@@ -95,27 +105,27 @@ send 3FA9C1B2 hello
 The peer list is printed whenever membership changes, and with `peers`:
 
 ```
-Online: Bob (7C13A9F2), Relay1 (9C110A3D), Relay2 (B3D01F22)
+Online: Alice (you, 4A91C0D2), Bob (7C13A9F2), R1 (9C110A3D), R2 (B3D01F22)
 ```
 
 A relay prints both the received sealed bytes and the opaque payload it
 forwards:
 
 ```
-[RELAY] received 412 bytes from Alice -> next Relay2 (192.168.1.24:9004) | forwarded 7f2c...
+[HOP ] [RELAY] received 412 bytes from Alice -> next R2 (192.168.1.24:9004) | forwarded 7f2c...
 ```
 
 Only the final recipient prints the plaintext:
 
 ```
-[Bob] Alice: hi
+[RECV] [Bob] Alice: hi
 ```
 
 There is no plaintext in a relay's terminal. The sender can print the route
 with `--verbose-route` for the audience:
 
 ```
-Alice -> Relay1 -> Relay2 -> Bob
+Alice -> R1 -> R2 -> Bob
 ```
 
 ## How the onion works
@@ -162,13 +172,13 @@ addresses.
 
 ## Acceptance demo
 
-1. Build and start Alice, Bob, Relay1 and Relay2 in four terminals.
+1. Build and start Alice, Bob, R1 and R2 in four terminals.
 2. Wait for every terminal to print all four names in `Online:`.
-3. In Alice: `send Bob hi` → only Bob prints `[Bob] Alice: hi`.
-4. In Alice: `send Bob hi --relays 2 --verbose-route` → Relay1 and Relay2 print
+3. In Alice: `send Bob hi` → only Bob prints `[RECV] [Bob] Alice: hi`.
+4. In Alice: `send Bob hi --relays 2 --verbose-route` → R1 and R2 print
    yellow `[RELAY]` lines with opaque hex blobs and forward; Bob prints the
    message; neither relay contains `hi` in its output.
-5. In Relay1: `quit`. Wait for Alice's peer list to drop Relay1 (immediate via
+5. In R1: `quit`. Wait for Alice's peer list to drop R1 (immediate via
    BYE; at most 10 seconds after an abrupt kill).
 6. In Alice: `send Bob after-kill --relays 2` → Bob receives it through the
    remaining online peers.
@@ -176,8 +186,23 @@ addresses.
 
 `python3 meshchat/tests/smoke.py meshchat/build/meshchat` automates the six-node
 version, including discovery, direct and onion messaging, relay blindness,
-dead-peer removal and post-kill delivery. CI runs it on Linux, and the Windows
-CI job builds the exe and runs the same smoke test.
+dead-peer removal and post-kill delivery. CI runs it on Linux and Windows,
+runs `check_demo.sh` / `check_demo.ps1`, and builds the release bundles.
+
+Preflight and operator docs:
+- [check_demo.sh](check_demo.sh), [check_demo.ps1](check_demo.ps1)
+- [DEMO.md](DEMO.md) — timed rehearsal runbook
+- [TROUBLESHOOTING.md](TROUBLESHOOTING.md) — the five common failures
+- [KNOWN_ISSUES.md](KNOWN_ISSUES.md) — honest limitations
+
+## Portable bundles
+
+`make_dist.sh` and `make_dist.ps1` build `dist/meshchat-linux-x86_64.tar.gz`
+and `dist/meshchat-windows-x86_64.zip`. Each contains the binary, a
+`run.sh`/`run.bat` launcher that sets the library path relative to itself, and
+a `README.txt` with four-machine commands, `--peers` syntax, firewall rules and
+the Smart App Control fallback. The bundles are attached to the tagged release
+and do not need a compiler or package manager.
 
 ## Security scope
 
@@ -198,7 +223,9 @@ CI job builds the exe and runs the same smoke test.
   a spoofed BYE can remove a displayed peer. The full Jargonet protocol is the
   place for authenticated sessions.
 - **No persistence:** each launch creates a fresh X25519 key. Names are labels,
-  not unique ids; fingerprints disambiguate.
+  not unique ids; fingerprints disambiguate. If two nodes claim the same name,
+  the larger public key yields and exits with a clear `[fatal] duplicate peer
+  name` message; relaunch with a different name.
 - **UDP only:** no acknowledgement or retransmission for chat datagrams. On a
   healthy LAN this is fine; a dropped datagram is dropped.
 - **Not implemented here:** NAT traversal, DHT, offline delivery, sessions,
@@ -214,4 +241,8 @@ meshchat/
   src/main.cpp              colored CLI, command parser
   tests/smoke.py            six real processes over loopback broadcast
   run_demo.sh, run_demo.ps1 four-terminal demo launchers
+  check_demo.sh/.ps1        preflight checks
+  make_dist.sh/.ps1         portable bundle builders
+  DEMO.md, TROUBLESHOOTING.md, KNOWN_ISSUES.md
+  dist/                     bundle README and launchers
 ```

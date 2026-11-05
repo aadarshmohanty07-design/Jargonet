@@ -66,6 +66,7 @@ class MeshNode {
     std::string name;
     std::uint16_t port = 0;
     std::vector<Endpoint> seeds;
+    bool broadcast = true;
   };
 
   explicit MeshNode(Config config);
@@ -87,6 +88,7 @@ class MeshNode {
   PublicKey public_key() const { return key_.pk; }
   std::uint16_t unicast_port() const { return unicast_port_; }
   std::uint16_t discovery_port() const { return kDiscoveryPort; }
+  bool broadcast_enabled() const { return config_.broadcast; }
 
   std::function<void(const std::vector<PeerInfo>&)> on_peers;
   std::function<void(const PeerInfo&)> on_peer_online;
@@ -97,6 +99,7 @@ class MeshNode {
   std::function<void(std::size_t bytes, const Bytes& payload)> on_packet;
   std::function<void(const std::string&)> on_notice;
   std::function<void(const std::string&)> on_error;
+  std::function<void(const std::string&)> on_fatal;
 
  private:
   void run_loop();

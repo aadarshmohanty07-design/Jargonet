@@ -7,6 +7,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(JARGONET_SODIUM_ROOT "" CACHE PATH "Prefix containing libsodium headers and libraries")
+option(MESHCHAT_STATIC_SODIUM "Prefer a static libsodium archive" OFF)
+option(MESHCHAT_STATIC_RUNTIME "Statically link the C++/GCC runtime on Linux" OFF)
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
@@ -21,6 +23,15 @@ endif()
 
 find_path(SODIUM_INCLUDE_DIR sodium.h HINTS ${_sodium_include_hints})
 find_library(SODIUM_LIBRARY NAMES sodium libsodium HINTS ${_sodium_lib_hints})
+
+if(MESHCHAT_STATIC_SODIUM AND NOT WIN32)
+  find_library(SODIUM_STATIC_LIBRARY NAMES libsodium.a HINTS ${_sodium_lib_hints})
+  if(SODIUM_STATIC_LIBRARY)
+    set(SODIUM_LIBRARY "${SODIUM_STATIC_LIBRARY}")
+  else()
+    message(WARNING "MESHCHAT_STATIC_SODIUM requested, but libsodium.a was not found; the bundle script will include the shared library instead")
+  endif()
+endif()
 
 if(WIN32 AND SODIUM_LIBRARY AND NOT SODIUM_LIBRARY MATCHES "\\.a$")
   find_library(_SODIUM_STATIC_LIBRARY NAMES libsodium.a HINTS ${_sodium_lib_hints})
@@ -70,6 +81,8 @@ endif()
 if(MINGW)
   # Self-contained exe: do not depend on whatever libstdc++ is first on PATH.
   target_link_options(meshchat PRIVATE -static)
+elseif(MESHCHAT_STATIC_RUNTIME)
+  target_link_options(meshchat PRIVATE -static-libstdc++ -static-libgcc)
 endif()
 
 if(WIN32)
