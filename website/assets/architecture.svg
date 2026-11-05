@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 300" role="img" aria-labelledby="diagram-title diagram-desc">
+  <title id="diagram-title">Alice sends an onion-routed message through relays R1 and R2 to Bob</title>
+  <desc id="diagram-desc">Three sealed layers leave Alice. R1 removes one layer and knows only Alice and R2. R2 removes one layer and knows only R1 and Bob. Bob removes the last layer and reads the plaintext. The relays never see plaintext.</desc>
+  <style>
+    .bg { fill: #0d0d0d; }
+    .node { fill: #111111; stroke: #2b2b2b; stroke-width: 1.2; }
+    .node.bob { stroke: #00d4aa; }
+    .name { fill: #e0e0e0; font: 600 20px ui-monospace, "Cascadia Code", monospace; }
+    .role { fill: #9a9a9a; font: 13px ui-monospace, "Cascadia Code", monospace; }
+    .title { fill: #e0e0e0; font: 600 20px ui-monospace, "Cascadia Code", monospace; }
+    .sub { fill: #9a9a9a; font: 14px system-ui, sans-serif; }
+    .wire { stroke: #444; stroke-width: 1.5; fill: none; }
+    .arrow { fill: #00d4aa; }
+    .label { fill: #bdbdbd; font: 14px ui-monospace, "Cascadia Code", monospace; }
+    .small { fill: #9a9a9a; font: 14px ui-monospace, "Cascadia Code", monospace; }
+    .plain { fill: #00d4aa; font: 15px ui-monospace, "Cascadia Code", monospace; }
+    .layer { fill: #121d1a; stroke: #00d4aa; stroke-width: 1.4; }
+    .layer.y { fill: #1d1a10; stroke: #f0c040; }
+    .peel { fill: none; stroke: #666; stroke-width: 1.2; stroke-dasharray: 4 4; }
+    .lock { fill: none; stroke: #00d4aa; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+    .rule { stroke: #242424; }
+  </style>
+
+  <rect class="bg" x="0" y="0" width="900" height="300"/>
+  <text class="title" x="30" y="36">Alice → R1 → R2 → Bob</text>
+  <text class="sub" x="30" y="57">Each relay removes exactly one sealed layer. No relay sees both endpoints.</text>
+  <line class="rule" x1="30" y1="72" x2="870" y2="72"/>
+
+  <rect class="node" x="24" y="132" width="150" height="68" rx="4"/>
+  <text class="name" x="44" y="162">Alice</text>
+  <text class="role" x="44" y="182">sender</text>
+
+  <rect class="node" x="244" y="132" width="150" height="68" rx="4"/>
+  <text class="name" x="264" y="162">R1</text>
+  <text class="role" x="264" y="182">relay · peels 1</text>
+
+  <rect class="node" x="474" y="132" width="150" height="68" rx="4"/>
+  <text class="name" x="494" y="162">R2</text>
+  <text class="role" x="494" y="182">relay · peels 1</text>
+
+  <rect class="node bob" x="704" y="132" width="150" height="68" rx="4"/>
+  <text class="name" x="724" y="162">Bob</text>
+  <text class="role" x="724" y="182">recipient</text>
+
+  <path class="wire" d="M174 166H244"/>
+  <path class="wire" d="M394 166H474"/>
+  <path class="wire" d="M624 166H704"/>
+  <path class="arrow" d="m238 162 8 4-8 4z"/>
+  <path class="arrow" d="m468 162 8 4-8 4z"/>
+  <path class="arrow" d="m698 162 8 4-8 4z"/>
+
+  <g aria-hidden="true">
+    <text class="label" x="177" y="92">3 sealed layers</text>
+    <rect class="layer" x="177" y="102" width="58" height="10" rx="2"/>
+    <rect class="layer" x="181" y="108" width="58" height="10" rx="2"/>
+    <rect class="layer" x="185" y="114" width="58" height="10" rx="2"/>
+  </g>
+
+  <g aria-hidden="true">
+    <text class="label" x="407" y="92">2 layers</text>
+    <rect class="layer y" x="407" y="106" width="58" height="10" rx="2"/>
+    <rect class="layer y" x="411" y="112" width="58" height="10" rx="2"/>
+    <rect class="peel" x="407" y="98" width="58" height="10" rx="2"/>
+  </g>
+
+  <g aria-hidden="true">
+    <text class="label" x="637" y="92">sealed to Bob</text>
+    <rect class="layer" x="637" y="112" width="58" height="10" rx="2"/>
+    <rect class="peel" x="637" y="98" width="58" height="10" rx="2"/>
+  </g>
+
+  <text class="small" x="24" y="230">sees next hop only</text>
+  <text class="small" x="244" y="230">sees Alice and R2</text>
+  <text class="small" x="474" y="230">sees R1 and Bob</text>
+  <text class="plain" x="704" y="230">reads plaintext</text>
+
+  <g transform="translate(30 264)">
+    <path class="lock" d="M3 9V5a4 4 0 0 1 8 0v4m-9 0h10v8H2z"/>
+    <text class="sub" x="24" y="13">Relays only ever see encrypted bytes.</text>
+    <path class="lock" d="M453 9V5a4 4 0 0 1 8 0v4m-9 0h10v8h-10z"/>
+    <text class="sub" x="474" y="13">Only Bob sees plaintext.</text>
+  </g>
+</svg>

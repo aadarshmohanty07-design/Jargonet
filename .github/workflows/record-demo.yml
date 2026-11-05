@@ -1,0 +1,36 @@
+name: record-demo
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build g++ libsodium-dev python3 python3-venv tmux
+      - name: Build meshchat
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          cmake --build build -j 4
+      - name: Install asciinema
+        run: |
+          python3 -m venv .asciinema
+          .asciinema/bin/pip install asciinema
+      - name: Record four-pane demo
+        run: |
+          mkdir -p website/assets
+          PATH="$PWD/.asciinema/bin:$PATH" bash website/tools/record_demo.sh "$PWD/build/meshchat" "$PWD/website/assets/demo.cast"
+      - name: Upload cast
+        uses: actions/upload-artifact@v4
+        with:
+          name: demo-cast
+          path: website/assets/demo.cast
+          if-no-files-found: error

@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Jargonet — private LAN messaging without accounts</title>
+  <meta name="description" content="Jargonet / meshchat is a working C++ prototype of onion-routed, end-to-end encrypted chat on a local network. No accounts, no server, no tracking.">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0a0a0a">
+  <meta name="referrer" content="no-referrer">
+  <meta property="og:title" content="Jargonet — private LAN messaging without accounts">
+  <meta property="og:description" content="A working C++ prototype of onion-routed, end-to-end encrypted chat that runs entirely on your local network.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://aadarshmohanty07-design.github.io/Jargonet/">
+  <link rel="canonical" href="https://aadarshmohanty07-design.github.io/Jargonet/">
+  <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./script.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <main id="main" class="wrap">
+    <section class="hero" aria-labelledby="hero-title">
+      <h1 id="hero-title"><span class="accent">Jargonet</span> — private LAN messaging without accounts, servers, or tracking.</h1>
+      <p class="lede">A working C++ prototype of onion-routed, end-to-end encrypted chat that runs entirely on your local network.</p>
+      <div class="actions">
+        <a class="button primary" href="#demo">Watch the demo</a>
+        <a class="button" href="https://github.com/aadarshmohanty07-design/Jargonet/releases/latest" target="_blank" rel="noopener noreferrer">Download</a>
+      </div>
+      <p class="fine">Built in 1 week. LAN-only. No cloud. No accounts.</p>
+    </section>
+
+    <section id="how" aria-labelledby="how-title">
+      <h2 id="how-title">How it works</h2>
+      <div class="principles">
+        <article class="principle">
+          <span class="index" aria-hidden="true">01</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <circle cx="8" cy="15" r="3.5"></circle>
+            <path d="M10.5 12.5 19 4m-3 3 2 2m-4 0 2 2"></path>
+          </svg>
+          <h3>No accounts.</h3>
+          <p>A locally generated keypair is your identity. No email, no phone, no server-side registration.</p>
+        </article>
+        <article class="principle">
+          <span class="index" aria-hidden="true">02</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="m12 3 8 4-8 4-8-4 8-4Z"></path>
+            <path d="m4 9 8 4 8-4M4 14l8 4 8-4"></path>
+          </svg>
+          <h3>Onion routing.</h3>
+          <p>Messages are wrapped in multiple encryption layers and forwarded through other online peers. Each relay removes exactly one layer.</p>
+        </article>
+        <article class="principle">
+          <span class="index" aria-hidden="true">03</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M3 3l18 18"></path>
+            <path d="M10.6 6.3A9.8 9.8 0 0 1 12 6c5 0 8.5 4.5 9.5 6a12 12 0 0 1-2.3 3.2M6.2 7.9A13 13 0 0 0 2.5 12c1 1.5 4.5 6 9.5 6a9.7 9.7 0 0 0 4.1-.9"></path>
+          </svg>
+          <h3>Relay blindness.</h3>
+          <p>No relay can read the message or identify both the sender and recipient. Only the recipient sees plaintext.</p>
+        </article>
+      </div>
+
+      <figure class="diagram">
+        <img src="./assets/architecture.svg" width="900" height="300" loading="lazy" alt="Alice sends a message wrapped in three sealed layers through relays R1 and R2 to Bob. R1 removes one layer, R2 removes one layer, and Bob removes the final layer. The relays only see encrypted bytes.">
+        <figcaption>Alice → R1 → R2 → Bob. Each relay peels exactly one sealed layer; only the final recipient sees plaintext.</figcaption>
+      </figure>
+    </section>
+
+    <section id="proves" aria-labelledby="proves-title">
+      <h2 id="proves-title">What the demo proves</h2>
+      <div class="claims">
+        <div>
+          <h3 class="ok">Works in the prototype</h3>
+          <ul class="claim-list">
+            <li><span class="mark" aria-hidden="true">✅</span> End-to-end encryption using libsodium sealed boxes.</li>
+            <li><span class="mark" aria-hidden="true">✅</span> Multi-hop onion routing through 0–4 online peers.</li>
+            <li><span class="mark" aria-hidden="true">✅</span> Relays print opaque hex—never plaintext.</li>
+            <li><span class="mark" aria-hidden="true">✅</span> Works with any number of instances on the same LAN.</li>
+            <li><span class="mark" aria-hidden="true">✅</span> Survives a relay going offline mid-session.</li>
+          </ul>
+        </div>
+        <div>
+          <h3 class="warn">Known limitations</h3>
+          <ul class="claim-list">
+            <li><span class="mark" aria-hidden="true">⚠️</span> LAN-only—no NAT traversal or DHT in this prototype.</li>
+            <li><span class="mark" aria-hidden="true">⚠️</span> No sender authentication—sealed boxes are anonymous.</li>
+            <li><span class="mark" aria-hidden="true">⚠️</span> Relays see adjacent IPs and packet timing.</li>
+            <li><span class="mark" aria-hidden="true">⚠️</span> Text capped at 700 bytes; max 4 relays.</li>
+            <li><span class="mark" aria-hidden="true">⚠️</span> Windows binary is unsigned; Smart App Control may block it.</li>
+          </ul>
+        </div>
+      </div>
+      <p class="aside">The honest list matters: this is a seven-day demonstration, not a production messenger. Read the <a href="https://github.com/aadarshmohanty07-design/Jargonet/blob/main/meshchat/KNOWN_ISSUES.md" target="_blank" rel="noopener noreferrer">known issues</a>.</p>
+    </section>
+
+    <section id="demo" aria-labelledby="demo-title">
+      <h2 id="demo-title">Live terminal demo</h2>
+      <p class="section-lede">Four nodes on one LAN. Commands typed in Alice’s pane, relay output in R1 and R2, plaintext only in Bob’s pane.</p>
+      <div class="player-frame">
+        <div id="asciinema-player" class="player" role="region" data-cast="./assets/demo.cast" aria-label="Recorded terminal session of the four-node meshchat demo"></div>
+        <p id="player-status" class="player-status" role="status">Loading the terminal recording…</p>
+        <p id="player-fallback" class="player-fallback" hidden>Demo recording will be added before submission. The exact command sequence is in the <a href="https://github.com/aadarshmohanty07-design/Jargonet/blob/main/meshchat/DEMO.md" target="_blank" rel="noopener noreferrer">runbook</a>.</p>
+      </div>
+      <noscript><p class="player-fallback">The terminal player needs JavaScript. The four-node demo commands are in the <a href="https://github.com/aadarshmohanty07-design/Jargonet/blob/main/meshchat/DEMO.md" target="_blank" rel="noopener noreferrer">runbook</a>.</p></noscript>
+      <p class="caption">Four nodes. One LAN. Alice sends “hello through the mesh” to Bob via R1 and R2. R1 and R2 only see encrypted bytes.</p>
+    </section>
+
+    <section id="download" aria-labelledby="download-title">
+      <h2 id="download-title">Download &amp; run</h2>
+      <div class="download-grid">
+        <div class="code-block">
+          <div class="code-head"><span class="os">Linux</span><button class="copy" type="button" data-copy-target="linux-command" aria-label="Copy Linux commands">Copy</button></div>
+          <pre><code id="linux-command">tar -xzf meshchat-linux-x86_64.tar.gz
+./run.sh</code></pre>
+        </div>
+        <div class="code-block">
+          <div class="code-head"><span class="os">Windows</span><button class="copy" type="button" data-copy-target="windows-command" aria-label="Copy Windows command">Copy</button></div>
+          <pre><code id="windows-command">run.bat</code></pre>
+          <p class="code-note">Unzip the release first, then run <code>run.bat</code>.</p>
+        </div>
+      </div>
+      <p><a class="text-link" href="https://github.com/aadarshmohanty07-design/Jargonet/releases/latest" target="_blank" rel="noopener noreferrer">Download the latest release</a></p>
+      <p class="note">Physical hardware testing is the user’s responsibility. CI verifies six real processes over UDP on Linux and Windows.</p>
+      <p class="callout"><strong>Windows note:</strong> the binary is unsigned. Smart App Control may block it. Use the Linux bundle or a machine with SAC off; do not disable SAC on a shared demo machine.</p>
+    </section>
+
+    <section id="security" aria-labelledby="security-title">
+      <h2 id="security-title">Security model &amp; FAQ</h2>
+      <dl class="faq">
+        <dt>Is this Tor?</dt>
+        <dd>No. It borrows onion routing but is scoped to LANs and has no cover traffic or directory authorities.</dd>
+        <dt>Can the server see my messages?</dt>
+        <dd>There is no server. Relays see only the previous and next hop, and encrypted bytes.</dd>
+        <dt>Can I run this on mobile?</dt>
+        <dd>Not in this prototype. Android and iOS are future work; this submission is PC-only.</dd>
+        <dt>Is it production-ready?</dt>
+        <dd>No. It is a 1-week prototype that demonstrates the privacy model. Do not use it for sensitive communication yet.</dd>
+      </dl>
+      <p class="aside">Scope and threat model: <a href="https://github.com/aadarshmohanty07-design/Jargonet/blob/main/meshchat/KNOWN_ISSUES.md" target="_blank" rel="noopener noreferrer">KNOWN_ISSUES.md</a> and <a href="https://github.com/aadarshmohanty07-design/Jargonet/blob/main/docs/SECURITY.md" target="_blank" rel="noopener noreferrer">SECURITY.md</a>.</p>
+    </section>
+
+    <footer>
+      <p class="footer-links"><a href="https://github.com/aadarshmohanty07-design/Jargonet" target="_blank" rel="noopener noreferrer">GitHub repository</a><span aria-hidden="true"> · </span><a href="https://github.com/aadarshmohanty07-design/Jargonet/releases/latest" target="_blank" rel="noopener noreferrer">Release</a><span aria-hidden="true"> · </span><a href="https://github.com/aadarshmohanty07-design/Jargonet/issues/new" target="_blank" rel="noopener noreferrer">Report an issue</a></p>
+      <p class="privacy">No cookies. No analytics. No tracking.</p>
+    </footer>
+  </main>
+</body>
+</html>
