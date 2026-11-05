@@ -45,6 +45,13 @@ jobs:
           tmux kill-session -t meshchat-demo
       - name: Build Linux bundle
         run: bash meshchat/make_dist.sh
+      - name: Test Linux bundle launcher
+        run: |
+          rm -rf /tmp/meshchat-bundle
+          mkdir -p /tmp/meshchat-bundle
+          tar -xzf dist/meshchat-linux-x86_64.tar.gz -C /tmp/meshchat-bundle
+          /tmp/meshchat-bundle/meshchat-linux-x86_64/run.sh --version
+          /tmp/meshchat-bundle/meshchat-linux-x86_64/run.sh --name BundleCheck --port 19301 --no-color --run-for 2 | grep 'Online: BundleCheck'
       - name: Upload Linux bundle
         uses: actions/upload-artifact@v4
         with:
@@ -91,6 +98,18 @@ jobs:
         run: |
           $env:PATH = "$env:RUNNER_TEMP\msys64\ucrt64\bin;" + $env:PATH
           pwsh -NoProfile -File meshchat/make_dist.ps1 -Bin build/meshchat.exe -OutDir dist -SodiumDir "$env:RUNNER_TEMP\msys64\ucrt64"
+      - name: Test Windows bundle launcher
+        shell: pwsh
+        run: |
+          $dest = Join-Path $env:TEMP "meshchat-bundle-test"
+          if (Test-Path $dest) { Remove-Item -Recurse -Force $dest }
+          Expand-Archive -Path "dist\meshchat-windows-x86_64.zip" -DestinationPath $dest -Force
+          $bat = Join-Path $dest "run.bat"
+          & $bat --version
+          if ($LASTEXITCODE -ne 0) { throw "bundle launcher failed" }
+          $out = & $bat --name BundleCheck --port 19301 --no-color --run-for 2 2>&1
+          $out | Write-Host
+          if (-not ($out | Select-String 'Online: BundleCheck')) { throw "bundled binary did not start and print its peer list" }
       - name: Upload Windows bundle
         uses: actions/upload-artifact@v4
         with:
