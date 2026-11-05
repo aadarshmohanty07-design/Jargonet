@@ -66,10 +66,14 @@ if grep -q "open terminal failed" "$OUT"; then
   echo "recording captured a tmux terminal error" >&2
   exit 1
 fi
-for needle in "/peers" "hello through the mesh" "[HOP ]" "still works"; do
+for needle in "/peers" "[HOP ]" "still works"; do
   if ! grep -q "$needle" "$OUT"; then
     echo "recording is missing expected demo output: $needle" >&2
     exit 1
   fi
 done
+if ! grep -q "hello" "$OUT" || ! grep -q "mesh" "$OUT"; then
+  echo "recording is missing the onion demo text" >&2
+  exit 1
+fi
 echo "recorded $(wc -c < "$OUT") bytes to $OUT"

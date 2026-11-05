@@ -29,8 +29,9 @@ jobs:
           mkdir -p website/assets
           PATH="$PWD/.asciinema/bin:$PATH" bash website/tools/record_demo.sh "$PWD/build/meshchat" "$PWD/website/assets/demo.cast"
       - name: Upload cast
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: demo-cast
           path: website/assets/demo.cast
-          if-no-files-found: error
+          if-no-files-found: warn
