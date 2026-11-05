@@ -314,7 +314,8 @@ int main(int argc, char** argv) {
     };
     node.on_fatal = [&printer](const std::string& text) {
       printer.line(kRed, "[fatal] " + text);
-      std::exit(1);
+      std::cout.flush();
+      std::_Exit(1);
     };
 
     std::string error;
