@@ -6,4 +6,4 @@ project(Jargonet LANGUAGES CXX)
 # sources remain in the tree for reference but are not part of this build.
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
 
-add_subdirectory(meshchat)
+add_subdirectory(meshchat meshchat-src)
