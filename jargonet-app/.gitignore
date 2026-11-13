@@ -1,0 +1,3 @@
+dev/cert.pem
+dev/key.pem
+dev/*.log

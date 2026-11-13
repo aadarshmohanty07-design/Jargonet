@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Jargonet</title>
+  <meta name="description" content="Jargonet is a working chat prototype with username-and-password accounts, live presence, friend requests and one-to-one messages.">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0b0d0c">
+  <meta name="referrer" content="no-referrer">
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <div id="boot" class="boot" role="status" aria-live="polite">
+    <span class="brand-word">jargonet</span>
+    <span class="boot-note">Opening your session…</span>
+  </div>
+
+  <div id="auth-view" class="auth" hidden>
+    <aside class="auth-aside">
+      <div class="brand">
+        <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+          <path d="M8.5 22.5 16 8l7.5 14.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+          <circle cx="16" cy="8" r="3" fill="currentColor"/>
+          <circle cx="8.5" cy="22.5" r="3" fill="currentColor"/>
+          <circle cx="23.5" cy="22.5" r="3" fill="currentColor"/>
+        </svg>
+        <span class="brand-word">jargonet</span>
+      </div>
+
+      <div class="auth-intro">
+        <h2>Find someone online. Start talking.</h2>
+        <p>Create an account with a username and password. See who is online, send a request, and start talking.</p>
+      </div>
+
+      <div class="signal" aria-hidden="true">
+        <span class="signal-node"><i></i>you</span>
+        <span class="signal-line"></span>
+        <span class="signal-node"><i></i>them</span>
+      </div>
+
+      <p class="auth-foot">No email. No phone number. No third-party login.</p>
+    </aside>
+
+    <main class="auth-main">
+      <div class="auth-card">
+        <div class="mode-switch" role="group" aria-label="Account mode">
+          <button id="mode-signin" class="mode is-active" type="button" aria-pressed="true">Sign in</button>
+          <button id="mode-signup" class="mode" type="button" aria-pressed="false">Create account</button>
+        </div>
+
+        <h1 id="auth-title">Welcome back.</h1>
+        <p id="auth-sub" class="auth-sub">Sign in with the username and password you chose.</p>
+
+        <form id="auth-form" class="auth-form" novalidate>
+          <div class="field">
+            <label for="username">Username</label>
+            <input id="username" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="yourname" maxlength="32" required>
+            <p id="username-hint" class="field-hint" hidden>3–32 characters. Letters, numbers, underscores or hyphens.</p>
+          </div>
+
+          <div class="field">
+            <label for="password">Password</label>
+            <div class="password-wrap">
+              <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Your password" required>
+              <button id="toggle-password" class="reveal" type="button" aria-pressed="false">Show</button>
+            </div>
+            <p id="password-hint" class="field-hint" hidden>At least 8 characters.</p>
+          </div>
+
+          <p id="auth-error" class="form-error" role="alert" hidden></p>
+          <p id="auth-status" class="form-status" role="status" aria-live="polite"></p>
+          <button id="auth-submit" class="button primary wide" type="submit">Sign in</button>
+        </form>
+
+        <p id="switch-copy" class="switch-copy">New to Jargonet? <button id="switch-mode" class="link-button" type="button">Create an account</button></p>
+        <p class="auth-legal">Prototype build. Don’t use it for sensitive conversations yet.</p>
+      </div>
+    </main>
+  </div>
+
+  <div id="app-view" class="app" hidden>
+    <header class="app-bar">
+      <div class="brand compact">
+        <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+          <path d="M8.5 22.5 16 8l7.5 14.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+          <circle cx="16" cy="8" r="3" fill="currentColor"/>
+          <circle cx="8.5" cy="22.5" r="3" fill="currentColor"/>
+          <circle cx="23.5" cy="22.5" r="3" fill="currentColor"/>
+        </svg>
+        <span class="brand-word">jargonet</span>
+      </div>
+
+      <div class="app-bar-actions">
+        <span id="connection" class="connection" data-state="live">
+          <span class="connection-dot" aria-hidden="true"></span>
+          <span id="connection-label">Live</span>
+        </span>
+        <span id="me-handle" class="handle"></span>
+        <button id="logout" class="button ghost small" type="button">Sign out</button>
+      </div>
+    </header>
+
+    <div id="workspace" class="workspace">
+      <aside class="sidebar" aria-label="People and chats">
+        <div class="me-strip">
+          <div id="me-avatar" class="avatar" aria-hidden="true"></div>
+          <div class="me-strip-copy">
+            <strong id="me-name"></strong>
+            <span class="muted">You are online</span>
+          </div>
+        </div>
+
+        <section id="requests-section" class="rail-section" aria-labelledby="requests-heading" hidden>
+          <div class="rail-heading">
+            <h2 id="requests-heading">Requests</h2>
+            <span id="requests-count" class="count"></span>
+          </div>
+          <div id="requests-list" class="people"></div>
+        </section>
+
+        <section class="rail-section" aria-labelledby="chats-heading">
+          <div class="rail-heading">
+            <h2 id="chats-heading">Chats</h2>
+            <button id="btn-open-join" class="link-button small-action" type="button" aria-label="Join an existing chat with a private key">+ Join a chat</button>
+          </div>
+          <div id="chat-list" class="people"></div>
+          <p id="chats-empty" class="rail-empty">Accepted chats appear here.</p>
+        </section>
+
+        <section class="rail-section" aria-labelledby="online-heading">
+          <div class="rail-heading">
+            <h2 id="online-heading">Add people</h2>
+            <span id="online-count" class="count">0</span>
+          </div>
+          <div id="online-list" class="people"></div>
+          <div id="online-empty" class="rail-empty">
+            <p>No one new is online right now.</p>
+            <p>Your friend needs an account and this page open.</p>
+            <button id="copy-invite-sidebar" class="button ghost small" type="button">Copy invite link</button>
+          </div>
+        </section>
+
+        <div class="rail-foot">
+          <button id="copy-invite-foot" class="link-button" type="button">Copy invite link</button>
+          <span>No analytics. No tracking.</span>
+        </div>
+      </aside>
+
+      <main id="chat-panel" class="chat-panel" aria-label="Chat">
+        <section id="welcome" class="welcome">
+          <div class="welcome-art" aria-hidden="true">
+            <svg viewBox="0 0 240 120" focusable="false">
+              <path d="M28 88 88 32l58 44 66-44" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 6"/>
+              <circle cx="28" cy="88" r="5" fill="currentColor"/>
+              <circle cx="88" cy="32" r="5" fill="currentColor"/>
+              <circle cx="146" cy="76" r="5" fill="currentColor"/>
+              <circle cx="212" cy="32" r="5" fill="currentColor"/>
+            </svg>
+          </div>
+          <h1>You’re online.</h1>
+          <p>People using Jargonet right now appear in the sidebar. Add one, and chat after they accept.</p>
+          <button id="copy-invite-welcome" class="button primary" type="button">Copy invite link</button>
+          <p class="welcome-note">Share the invite link when someone else wants to join.</p>
+        </section>
+
+        <section id="conversation" class="conversation" aria-label="Conversation" hidden>
+          <header class="chat-head">
+            <button id="back" class="icon-button" type="button" aria-label="Back to people">←</button>
+            <div class="chat-who">
+              <div id="chat-avatar" class="avatar" aria-hidden="true"></div>
+              <div>
+                <h2 id="chat-name"></h2>
+                <div class="chat-subline">
+                  <span id="chat-status" class="muted">Offline</span>
+                  <span id="chat-security-tag" class="tag security-tag">🔒 E2EE</span>
+                  <span id="chat-relay-tag" class="tag relay-tag" title="Messages hop through online peers">Peer Hopping</span>
+                </div>
+              </div>
+            </div>
+            <div class="tabs" role="tablist" aria-label="Chat views">
+              <button id="tab-chat" class="tab is-active" type="button" role="tab" aria-selected="true" aria-controls="panel-chat">Conversation</button>
+              <button id="tab-details" class="tab" type="button" role="tab" aria-selected="false" aria-controls="panel-details">Details</button>
+            </div>
+          </header>
+
+          <div id="panel-chat" class="tab-panel message-view" role="tabpanel" aria-labelledby="tab-chat">
+            <div id="messages" class="messages" role="log" aria-live="polite" aria-relevant="additions"></div>
+            <form id="composer" class="composer">
+              <label class="sr-only" for="message-input">Message</label>
+              <textarea id="message-input" rows="1" maxlength="2000" placeholder="Write a message"></textarea>
+              <button id="send" class="button primary" type="submit" disabled>Send</button>
+            </form>
+            <p id="message-status" class="composer-status" role="status" aria-live="polite"></p>
+            <p class="composer-hint">Enter to send. Shift + Enter for a new line.</p>
+          </div>
+
+          <div id="panel-details" class="tab-panel details" role="tabpanel" aria-labelledby="tab-details" hidden>
+            <div class="details-scroll">
+              <section class="key-section" aria-labelledby="room-keys-heading">
+                <div class="key-heading">
+                  <h3 id="room-keys-heading">Chatroom Keys</h3>
+                  <span id="room-key-algorithm" class="tag">AES-256-GCM</span>
+                </div>
+                <p class="muted small">Unique cryptographic keypair generated specifically for this chatroom.</p>
+                <div class="key-block">
+                  <div class="key-label">
+                    <span>Chat Public Key</span>
+                    <button class="copy-button" type="button" data-copy="room-public-key">Copy</button>
+                  </div>
+                  <code id="room-public-key" tabindex="0"></code>
+                </div>
+                <div class="key-block private">
+                  <div class="key-label">
+                    <span>Chat Private Key</span>
+                    <button class="copy-button" type="button" data-copy="room-private-key">Copy</button>
+                  </div>
+                  <code id="room-private-key" tabindex="0"></code>
+                  <p class="key-warning">Share this private key with anyone to let them use "Join a chat" and tap into this conversation as a group member.</p>
+                </div>
+                <p class="muted small">Chatroom ID <code id="room-id" class="inline-code"></code></p>
+                <div class="room-members-block">
+                  <span class="muted small">Participants:</span>
+                  <div id="room-members-list" class="room-members-chips"></div>
+                </div>
+              </section>
+
+              <section class="key-section" aria-labelledby="mesh-security-heading">
+                <div class="key-heading">
+                  <h3 id="mesh-security-heading">Peer Hopping & Privacy</h3>
+                  <span class="tag">Dark-Web Onion Routing</span>
+                </div>
+                <p class="muted small">Messages are encrypted client-side with the chatroom private key and forwarded through shifting random online peers before delivery. Intermediate nodes cannot decrypt the content and retain zero message records.</p>
+                <div class="route-stats">
+                  <div class="route-stat-item">
+                    <span class="stat-label">Encryption:</span>
+                    <span class="stat-val">AES-GCM (256-bit AEAD)</span>
+                  </div>
+                  <div class="route-stat-item">
+                    <span class="stat-label">Key Derivation:</span>
+                    <span class="stat-val">PBKDF2-SHA256 (100,000 iter)</span>
+                  </div>
+                  <div class="route-stat-item">
+                    <span class="stat-label">Peer Hopping:</span>
+                    <span id="active-hops-label" class="stat-val">Active (2-3 intermediate hops)</span>
+                  </div>
+                  <div class="route-stat-item">
+                    <span class="stat-label">Server Visibility:</span>
+                    <span class="stat-val zero-vis">Zero Knowledge (Encrypted Ciphertext Only)</span>
+                  </div>
+                </div>
+              </section>
+
+              <section class="key-section" aria-labelledby="your-keys-heading">
+                <div class="key-heading">
+                  <h3 id="your-keys-heading">Your Identity Key</h3>
+                  <span id="me-key-algorithm" class="tag"></span>
+                </div>
+                <p class="muted small">Account identity public key on this device.</p>
+                <div class="key-block">
+                  <div class="key-label">
+                    <span>Public key</span>
+                    <button class="copy-button" type="button" data-copy="me-public-key">Copy</button>
+                  </div>
+                  <code id="me-public-key" tabindex="0"></code>
+                </div>
+                <p class="muted small">Account ID <code id="me-id" class="inline-code"></code></p>
+              </section>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <div id="join-modal" class="modal-backdrop" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="join-modal-title">
+      <div class="modal-head">
+        <h2 id="join-modal-title">Join a Chat</h2>
+        <button id="btn-close-join" class="icon-button" type="button" aria-label="Close dialog">✕</button>
+      </div>
+      <p class="muted small">Enter the chatroom private key or invite token to tap into the conversation and turn it into a group chat.</p>
+      <form id="join-form" class="join-form">
+        <div class="field">
+          <label for="join-private-key">Chat Private Key</label>
+          <textarea id="join-private-key" rows="3" placeholder="Paste the chatroom private key (base64 string or jn-room:...)" required></textarea>
+        </div>
+        <p id="join-error" class="form-error" role="alert" hidden></p>
+        <div class="modal-actions">
+          <button id="btn-cancel-join" class="button ghost" type="button">Cancel</button>
+          <button id="btn-submit-join" class="button primary" type="submit">Join Conversation</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
