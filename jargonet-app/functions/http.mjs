@@ -29,14 +29,28 @@ export function applicationPath(request) {
   return match[1] || '/';
 }
 
-export function requireTrustedOrigin(request, origin = PUBLIC_ORIGIN) {
-  let configured;
-  try { configured = new URL(origin); } catch { throw new AppError('application_auth_not_configured', 503); }
-  if (configured.protocol !== 'https:' || configured.origin !== origin) {
-    throw new AppError('application_auth_not_configured', 503);
-  }
+// Same-origin check for state-changing requests. When `origin` is supplied the
+// browser Origin must match that exact host. When it is omitted the request's
+// own Host header is the reference, which keeps the check correct behind a
+// TLS-terminating proxy where the internal scheme is http but the browser
+// Origin is https. Only the host is compared, because scheme and port are
+// rewritten by the proxy in front of the app.
+export function requireTrustedOrigin(request, origin) {
   if (['GET', 'HEAD', 'OPTIONS'].includes(request.method)) return;
-  if (request.headers.get('origin') !== origin) throw new AppError('origin_forbidden', 403);
+
+  const supplied = request.headers.get('origin');
+  if (!supplied) throw new AppError('origin_forbidden', 403);
+
+  let suppliedHost;
+  try { suppliedHost = new URL(supplied).host; } catch { throw new AppError('origin_forbidden', 403); }
+
+  let expectedHost;
+  if (origin) {
+    try { expectedHost = new URL(origin).host; } catch { throw new AppError('application_auth_not_configured', 503); }
+  } else {
+    expectedHost = request.headers.get('host') || new URL(request.url).host;
+  }
+  if (!expectedHost || suppliedHost !== expectedHost) throw new AppError('origin_forbidden', 403);
 }
 
 export async function readJson(request, maxBytes = BODY_LIMIT_BYTES) {

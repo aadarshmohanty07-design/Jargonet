@@ -24,6 +24,33 @@ Run the backend contract checks with:
 node --test dev/chat.test.mjs
 ```
 
+## Self-hosted build
+
+`server.mjs` runs the same client and the same `functions/` router on a plain
+Node process with a SQLite file, so the app no longer depends on a managed
+runtime. It needs Node 22.5 or newer for `node:sqlite`; there are no npm
+dependencies to install.
+
+```bash
+node server.mjs                 # http://localhost:3000
+PORT=8080 node server.mjs       # pick a port
+DATA_DIR=/var/lib/jargonet node server.mjs   # pick where the database lives
+```
+
+The database is created at `data/jargonet.db` on first start from
+`schema.sqlite.sql`, which mirrors `schema.sql` column for column. Every
+statement is `IF NOT EXISTS`, so restarting never touches existing rows.
+`node dev/e2e-sqlite.mjs` exercises the whole API against a running server:
+registration, login, friends, messages, rooms, relay and session revocation.
+
+Two differences from the managed deployment:
+
+- The client calls `/functions/v1/app/api/*`, so the server serves the API on
+  that path and also on `/api/*`. The browser client is unchanged.
+- `requireTrustedOrigin` compares the browser `Origin` against the request's own
+  `Host` instead of a hardcoded domain, so one build works on any domain. It
+  still rejects cross-origin writes.
+
 ## Deployment
 
 The public output is `web/`; the Function entry is `functions/index.ts`; the

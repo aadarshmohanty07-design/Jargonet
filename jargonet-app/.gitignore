@@ -1,3 +1,7 @@
 dev/cert.pem
 dev/key.pem
 dev/*.log
+data/
+*.db
+*.db-wal
+*.db-shm

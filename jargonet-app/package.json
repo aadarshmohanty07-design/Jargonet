@@ -1,0 +1,14 @@
+{
+  "name": "jargonet-chat",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Jargonet chat: static client and a single-port Node API backed by SQLite.",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test dev/chat.test.mjs"
+  }
+}
