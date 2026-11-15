@@ -22,8 +22,8 @@
 
   <main id="main" class="wrap">
     <section class="hero" aria-labelledby="hero-title">
-      <h1 id="hero-title"><span class="accent">Jargonet</span> — private LAN messaging without accounts, servers, or tracking.</h1>
-      <p class="lede">A working C++ prototype of onion-routed, end-to-end encrypted chat that runs entirely on your local network.</p>
+      <h1 id="hero-title"><span class="accent">Jargonet</span>: private LAN messaging without accounts, servers, or tracking.</h1>
+      <p class="lede">A working C++ prototype of onion-routed, end-to-end encrypted chat that runs on your local network.</p>
       <div class="actions">
         <a class="button primary" href="#demo">Watch the demo</a>
         <a class="button" href="https://github.com/aadarshmohanty07-design/Jargonet/releases/latest" target="_blank" rel="noopener noreferrer">Download</a>
@@ -77,7 +77,7 @@
           <ul class="claim-list">
             <li><span class="mark" aria-hidden="true">✅</span> End-to-end encryption using libsodium sealed boxes.</li>
             <li><span class="mark" aria-hidden="true">✅</span> Multi-hop onion routing through 0–4 online peers.</li>
-            <li><span class="mark" aria-hidden="true">✅</span> Relays print opaque hex—never plaintext.</li>
+            <li><span class="mark" aria-hidden="true">✅</span> Relays print opaque hex, never plaintext.</li>
             <li><span class="mark" aria-hidden="true">✅</span> Works with any number of instances on the same LAN.</li>
             <li><span class="mark" aria-hidden="true">✅</span> Survives a relay going offline mid-session.</li>
           </ul>
@@ -85,15 +85,15 @@
         <div>
           <h3 class="warn">Known limitations</h3>
           <ul class="claim-list">
-            <li><span class="mark" aria-hidden="true">⚠️</span> LAN-only—no NAT traversal or DHT in this prototype.</li>
-            <li><span class="mark" aria-hidden="true">⚠️</span> No sender authentication—sealed boxes are anonymous.</li>
+            <li><span class="mark" aria-hidden="true">⚠️</span> LAN-only: no NAT traversal or DHT in this prototype.</li>
+            <li><span class="mark" aria-hidden="true">⚠️</span> No sender authentication: sealed boxes are anonymous.</li>
             <li><span class="mark" aria-hidden="true">⚠️</span> Relays see adjacent IPs and packet timing.</li>
             <li><span class="mark" aria-hidden="true">⚠️</span> Text capped at 700 bytes; max 4 relays.</li>
             <li><span class="mark" aria-hidden="true">⚠️</span> Windows binary is unsigned; Smart App Control may block it.</li>
           </ul>
         </div>
       </div>
-      <p class="aside">The honest list matters: this is a seven-day demonstration, not a production messenger. Read the <a href="https://github.com/aadarshmohanty07-design/Jargonet/blob/main/meshchat/KNOWN_ISSUES.md" target="_blank" rel="noopener noreferrer">known issues</a>.</p>
+      <p class="aside">This is a seven-day demonstration, not a production messenger. See the <a href="https://github.com/aadarshmohanty07-design/Jargonet/blob/main/meshchat/KNOWN_ISSUES.md" target="_blank" rel="noopener noreferrer">known issues</a>.</p>
     </section>
 
     <section id="demo" aria-labelledby="demo-title">
@@ -105,7 +105,7 @@
         <p id="player-fallback" class="player-fallback" hidden>Demo recording will be added before submission. The exact command sequence is in the <a href="https://github.com/aadarshmohanty07-design/Jargonet/blob/main/meshchat/DEMO.md" target="_blank" rel="noopener noreferrer">runbook</a>.</p>
       </div>
       <noscript><p class="player-fallback">The terminal player needs JavaScript. The four-node demo commands are in the <a href="https://github.com/aadarshmohanty07-design/Jargonet/blob/main/meshchat/DEMO.md" target="_blank" rel="noopener noreferrer">runbook</a>.</p></noscript>
-      <p class="caption">Four nodes. One LAN. Alice sends “hello through the mesh” to Bob via R1 and R2. R1 and R2 only see encrypted bytes.</p>
+      <p class="caption">Alice sends a message through relays R1 and R2 to Bob over a local network. R1 and R2 see only encrypted bytes.</p>
     </section>
 
     <section id="download" aria-labelledby="download-title">

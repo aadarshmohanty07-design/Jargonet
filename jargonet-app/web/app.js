@@ -11,7 +11,7 @@ const ERROR_MESSAGES = {
   invalid_credentials: 'That username and password don’t match.',
   username_taken: 'That username is already taken. Try another.',
   rate_limited: 'Too many attempts. Wait a moment and try again.',
-  invalid_keys: 'This browser could not create a keypair. Use a current version of Chrome, Edge, Firefox or Safari.',
+  invalid_keys: 'Browser cannot create keypairs. Update Chrome, Edge, Firefox, or Safari.',
   invalid_input: 'Check the form and try again.',
   invalid_message: 'Messages can be up to 2,000 characters.',
   not_friends: 'You can only message someone after they accept your request.',
@@ -24,12 +24,12 @@ const ERROR_MESSAGES = {
   login_required: 'Your session ended. Sign in again.',
   origin_forbidden: 'This request came from an unexpected origin.',
   application_auth_not_configured: 'Sign-in is not configured for this deployment yet.',
-  logout_unconfirmed: 'Sign-out could not be confirmed. Try again while the session is still active.',
+  logout_unconfirmed: 'Sign-out unconfirmed. Try again.',
   database_unavailable: 'The database is temporarily unavailable. Try again.',
   session_unavailable: 'Could not start a session. Try again.',
-  friendship_unconfirmed: 'The connection was not confirmed. Try accepting again.',
-  message_unconfirmed: 'The message may not have been delivered. Check the conversation before resending.',
-  registration_unconfirmed: 'Account creation was not confirmed. Try signing in with the same username.',
+  friendship_unconfirmed: 'Could not confirm connection. Accept again.',
+  message_unconfirmed: 'Message delivery unconfirmed. Check the conversation before resending.',
+  registration_unconfirmed: 'Account creation unconfirmed. Try signing in with that username.',
   payload_too_large: 'That payload is too large.',
   network_error: 'Could not reach Jargonet. Check your connection and try again.',
   invalid_response: 'Jargonet returned an unexpected response.',
@@ -38,7 +38,7 @@ const ERROR_MESSAGES = {
   room_not_found: 'That chatroom was not found. Check the private key.',
   invalid_room_key: 'Invalid chatroom private key.',
   room_forbidden: 'You must join this room to view its messages.',
-  encryption_failed: 'Encryption error. Your browser may not support Web Crypto AES-GCM.',
+  encryption_failed: 'Encryption failed. Web Crypto AES-GCM may be unsupported.',
 };
 
 const $ = (id) => document.getElementById(id);
@@ -271,8 +271,8 @@ function setMode(mode) {
   els.modeSignup.setAttribute('aria-pressed', String(!signingIn));
   els.authTitle.textContent = signingIn ? 'Welcome back.' : 'Create your account.';
   els.authSub.textContent = signingIn
-    ? 'Sign in with the username and password you chose.'
-    : 'Pick a username and password. Your identity keypair is created in this browser.';
+    ? 'Enter your username and password.'
+    : 'Pick a username and password. Keys stay in your browser.';
   els.usernameHint.hidden = signingIn;
   els.passwordHint.hidden = signingIn;
   els.password.autocomplete = signingIn ? 'current-password' : 'new-password';
@@ -977,7 +977,7 @@ function renderDetails() {
   const room = state.roomDetail;
   if (els.roomPublicKey) els.roomPublicKey.textContent = room?.publicKey || 'Loading…';
   if (els.roomPrivateKey) els.roomPrivateKey.textContent = room?.privateKey || 'Loading…';
-  if (els.roomId) els.roomId.textContent = room?.id || (state.selectedFriendId ? `chat:${state.selectedFriendId}` : '—');
+  if (els.roomId) els.roomId.textContent = room?.id || (state.selectedFriendId ? `chat:${state.selectedFriendId}` : '-');
   if (els.roomKeyAlgorithm) els.roomKeyAlgorithm.textContent = room?.keyAlgorithm || 'AES-256-GCM';
 
   if (els.activeHopsLabel) {
