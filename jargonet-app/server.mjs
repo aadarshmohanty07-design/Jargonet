@@ -90,9 +90,13 @@ async function serveStatic(res, pathname) {
   try {
     const body = await readFile(target);
     const extension = target.slice(target.lastIndexOf('.'));
+    // Code and markup are revalidated on every load. A cached app.js next to a
+    // fresh index.html renders a blank page, and the previous five-minute
+    // max-age did exactly that right after a deploy.
+    const isCode = extension === '.html' || extension === '.js' || extension === '.css';
     res.writeHead(200, {
       'content-type': CONTENT_TYPES[extension] || 'application/octet-stream',
-      'cache-control': extension === '.html' ? 'no-cache' : 'public, max-age=300',
+      'cache-control': isCode ? 'no-cache' : 'public, max-age=300',
       'x-content-type-options': 'nosniff',
       'referrer-policy': 'no-referrer',
     });
