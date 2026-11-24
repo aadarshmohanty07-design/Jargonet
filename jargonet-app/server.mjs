@@ -6,11 +6,26 @@
 // functions/; only the managed-runtime bindings (database client and request
 // context) are replaced here.
 //
-// Storage is a SQLite file inside the project, which is the supported
-// persistence model for a single-port deployment. Set DATA_DIR to move it.
+// Two storage modes:
+//
+//   local   (default) A SQLite file inside the project, the supported
+//           persistence model for a single-port deployment. Set DATA_DIR to
+//           move it.
+//
+//   proxy   When JARGONET_UPSTREAM holds a base URL (or proxy-upstream.txt
+//           holds one), API calls are forwarded to that backend instead. This
+//           exists so the page can be served from another domain while the
+//           accounts and messages that already live in an existing deployment
+//           stay exactly where they are, instead of starting from an empty
+//           database. Static files always come from this repository.
+//
+// The session cookie is `__Host-app_auth.session`, which by definition carries
+// no Domain attribute and therefore binds to whichever host sets it. A
+// forwarded Set-Cookie is stored for this domain, so proxying keeps people
+// logged in without rewriting anything.
 
 import { createServer } from 'node:http';
-import { mkdirSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { dirname, join, normalize, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -22,6 +37,12 @@ const projectDir = dirname(fileURLToPath(import.meta.url));
 const webDir = join(projectDir, 'web');
 const dataDir = process.env.DATA_DIR || join(projectDir, 'data');
 const port = Number(process.env.PORT) || 3000;
+
+const UPSTREAM_FILE = join(projectDir, 'proxy-upstream.txt');
+const upstream = (
+  process.env.JARGONET_UPSTREAM
+  || (existsSync(UPSTREAM_FILE) ? readFileSync(UPSTREAM_FILE, 'utf8') : '')
+).trim().replace(/\/+$/, '');
 
 const CONTENT_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -35,15 +56,17 @@ const CONTENT_TYPES = {
   '.txt': 'text/plain; charset=utf-8',
 };
 
-mkdirSync(dataDir, { recursive: true });
-
-const db = createSqliteClient(join(dataDir, 'jargonet.db'));
-db.exec(readFileSync(join(projectDir, 'schema.sqlite.sql'), 'utf8'));
-
 // `origin` is deliberately omitted: the router then falls back to comparing the
 // browser Origin against this request's own Host header, which is what makes
 // the app deployable on any domain without a rebuild.
-const handle = createApplication({ db, origin: () => undefined });
+let handle = null;
+
+if (!upstream) {
+  mkdirSync(dataDir, { recursive: true });
+  const db = createSqliteClient(join(dataDir, 'jargonet.db'));
+  db.exec(readFileSync(join(projectDir, 'schema.sqlite.sql'), 'utf8'));
+  handle = createApplication({ db, origin: () => undefined });
+}
 
 function isApiPath(pathname) {
   return pathname === '/api' || pathname.startsWith('/api/') || pathname.startsWith('/functions/v1/app');
@@ -77,6 +100,59 @@ async function serveStatic(res, pathname) {
   } catch {
     res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' }).end('not found');
   }
+}
+
+// Forwards one API call to the existing backend. The request is rebuilt rather
+// than piped so the Origin header can be set to the upstream host: that backend
+// rejects cross-origin writes, and from its point of view this server is the
+// browser.
+async function proxyApi(req, res, url) {
+  const target = new URL(upstream);
+  const outgoing = new URL(url.pathname + url.search, target.origin);
+
+  const headers = new Headers();
+  const contentType = req.headers['content-type'];
+  if (contentType) headers.set('content-type', contentType);
+  if (req.headers.cookie) headers.set('cookie', req.headers.cookie);
+  headers.set('origin', target.origin);
+  headers.set('accept', 'application/json');
+
+  let body;
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    const chunks = [];
+    let size = 0;
+    for await (const chunk of req) {
+      size += chunk.length;
+      if (size > 65536) {
+        res.writeHead(413, { 'content-type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ error: 'payload_too_large' }));
+        return;
+      }
+      chunks.push(chunk);
+    }
+    body = Buffer.concat(chunks);
+  }
+
+  const upstreamResponse = await fetch(outgoing, {
+    method: req.method,
+    headers,
+    body,
+    redirect: 'manual',
+  });
+
+  const outHeaders = {};
+  for (const [key, value] of upstreamResponse.headers) {
+    if (key === 'set-cookie' || key === 'transfer-encoding' || key === 'connection') continue;
+    outHeaders[key] = value;
+  }
+
+  const cookies = typeof upstreamResponse.headers.getSetCookie === 'function'
+    ? upstreamResponse.headers.getSetCookie()
+    : [];
+  if (cookies.length > 0) outHeaders['set-cookie'] = cookies;
+
+  res.writeHead(upstreamResponse.status, outHeaders);
+  res.end(Buffer.from(await upstreamResponse.arrayBuffer()));
 }
 
 function toRequest(req, url) {
@@ -115,6 +191,12 @@ const server = createServer(async (req, res) => {
     }
 
     url.pathname = normaliseApiPath(url.pathname);
+
+    if (upstream) {
+      await proxyApi(req, res, url);
+      return;
+    }
+
     const response = await handle({ request: toRequest(req, url) });
     await writeResponse(res, response);
   } catch {
@@ -126,14 +208,11 @@ const server = createServer(async (req, res) => {
 });
 
 server.listen(port, '0.0.0.0', () => {
-  console.log(`jargonet-chat listening on 0.0.0.0:${port}`);
+  console.log(`jargonet-chat listening on 0.0.0.0:${port}${upstream ? ` (api -> ${upstream})` : ' (api -> local sqlite)'}`);
 });
 
 for (const signal of ['SIGINT', 'SIGTERM']) {
   process.on(signal, () => {
-    server.close(() => {
-      db.close();
-      process.exit(0);
-    });
+    server.close(() => process.exit(0));
   });
 }

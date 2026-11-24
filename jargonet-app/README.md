@@ -53,11 +53,31 @@ Two differences from the managed deployment:
 
 ## Deployment
 
+Two ways to run it, both on a single port.
+
+**Local storage.** `node server.mjs` serves `web/` and the JSON API, keeping rows
+in a SQLite file under `data/`. No dependencies, no external database.
+
+**Forwarding to an existing backend.** If `JARGONET_UPSTREAM` (or the file
+`proxy-upstream.txt`) holds a base URL, API calls are forwarded there instead
+and the SQLite file is not opened. Static files still come from this repository.
+
+The second mode exists for one situation: moving the page to another domain
+without orphaning the accounts and messages already stored in a live
+deployment. Because the session cookie is `__Host-app_auth.session` — a prefix
+that forbids a `Domain` attribute — a forwarded `Set-Cookie` binds to whatever
+host set it, so people stay signed in through the new origin. The server also
+rewrites `Origin` to the upstream host, since that backend rejects writes from
+any other origin.
+
+Note what this mode does and does not do. It changes where the page is served
+from; it does not copy the data. The rows stay in the original database, so
+that backend must remain reachable. Use it as a bridge, not as a migration.
+
 The public output is `web/`; the Function entry is `functions/index.ts`; the
-reviewed schema is `schema.sql`. The deployed site must set `PUBLIC_ORIGIN` in
-`functions/http.mjs` to its exact HTTPS origin (the CSRF check rejects writes
-from any other origin). The database is function-backed and assigned to the
-site project during preparation.
+reviewed schema is `schema.sql`. `requireTrustedOrigin` accepts an explicit
+origin when one is passed and otherwise compares the browser `Origin` against
+the request's own `Host`, so one build works on any domain.
 
 ## Data model & Cryptography
 
