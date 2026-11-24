@@ -10,6 +10,25 @@
   <meta name="referrer" content="no-referrer">
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./styles.css">
+  <script>
+    // Some hosts append a "made with" badge to every page they serve. This app
+    // ships its own branding, so strip the badge on sight. A stylesheet rule
+    // cannot do it: the badge's shadow style sets `all: initial !important`,
+    // which wins the cascade. Removing the node is the only reliable fix.
+    (function () {
+      var SELECTOR = 'qoder-sites-badge, #qoder-sites-watermark, script[data-qoder-watermark]';
+      function sweep() {
+        var nodes = document.querySelectorAll(SELECTOR);
+        for (var i = 0; i < nodes.length; i += 1) {
+          if (nodes[i].parentNode) nodes[i].parentNode.removeChild(nodes[i]);
+        }
+      }
+      var root = document.documentElement;
+      if (!root || typeof MutationObserver !== 'function') return;
+      new MutationObserver(sweep).observe(root, { childList: true, subtree: true });
+      sweep();
+    })();
+  </script>
   <script src="./app.js" defer></script>
 </head>
 <body>
