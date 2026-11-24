@@ -299,13 +299,15 @@ function setAuthBusy(busy, status = '') {
 
 function resetSensitiveView() {
   els.mePublicKey.textContent = '';
-  els.mePrivateKey.textContent = '';
-  els.partnerPublicKey.textContent = '';
+  // The details panel no longer shows the private key or the other party's
+  // key, so these nodes can be absent. They are still cleared when present.
+  if (els.mePrivateKey) els.mePrivateKey.textContent = '';
+  if (els.partnerPublicKey) els.partnerPublicKey.textContent = '';
   els.meId.textContent = '';
   els.meKeyAlgorithm.textContent = '';
-  els.partnerId.textContent = '';
-  els.partnerKeyAlgorithm.textContent = '';
-  els.partnerNameInline.textContent = '';
+  if (els.partnerId) els.partnerId.textContent = '';
+  if (els.partnerKeyAlgorithm) els.partnerKeyAlgorithm.textContent = '';
+  if (els.partnerNameInline) els.partnerNameInline.textContent = '';
   if (els.roomPublicKey) els.roomPublicKey.textContent = '';
   if (els.roomPrivateKey) els.roomPrivateKey.textContent = '';
   if (els.roomId) els.roomId.textContent = '';
@@ -378,7 +380,7 @@ function showApp() {
   setAvatar(els.meAvatar, state.me.username);
   els.meKeyAlgorithm.textContent = state.me.keyAlgorithm;
   els.mePublicKey.textContent = state.me.publicKey;
-  els.mePrivateKey.textContent = state.me.privateKey;
+  if (els.mePrivateKey) els.mePrivateKey.textContent = state.me.privateKey;
   els.meId.textContent = state.me.id;
   els.welcome.hidden = false;
   els.conversation.hidden = true;
