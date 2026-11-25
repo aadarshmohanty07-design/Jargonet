@@ -25,7 +25,7 @@
 // logged in without rewriting anything.
 
 import { createServer } from 'node:http';
-import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { dirname, join, normalize, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -65,6 +65,24 @@ if (!upstream) {
   mkdirSync(dataDir, { recursive: true });
   const db = createSqliteClient(join(dataDir, 'jargonet.db'));
   db.exec(readFileSync(join(projectDir, 'schema.sqlite.sql'), 'utf8'));
+
+  // One-shot wipe, for clearing throwaway accounts out of a deployed database.
+  // The marker is written into the data directory rather than the repository,
+  // so re-uploading the project cannot trigger a second wipe: once this has run
+  // on a volume it never runs again there.
+  const resetFlag = join(projectDir, 'reset-db.flag');
+  const resetMarker = join(dataDir, '.reset-done');
+  if (existsSync(resetFlag) && !existsSync(resetMarker)) {
+    for (const table of [
+      'relay_packets', 'room_members', 'messages', 'rooms',
+      'friendships', 'friend_requests', 'auth_limiter', 'sessions', 'users',
+    ]) {
+      db.exec(`DELETE FROM ${table}`);
+    }
+    writeFileSync(resetMarker, new Date().toISOString());
+    console.log('database reset: application rows cleared');
+  }
+
   handle = createApplication({ db, origin: () => undefined });
 }
 
