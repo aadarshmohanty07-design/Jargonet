@@ -5,7 +5,7 @@ import { createApplication } from './router.mjs';
 // The app owns its accounts and sessions. Platform identity is not used.
 const handle = createApplication({
   db: createDatabaseClient(),
-  origin: () => Deno.env.get('APP_ORIGIN') || PUBLIC_ORIGIN,
+  origin: () => Deno.env.get('APP_ORIGIN') || PUBLIC_ORIGIN || undefined,
 });
 
 Deno.serve(async (request) => {
