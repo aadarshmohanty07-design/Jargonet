@@ -67,20 +67,25 @@ if (!upstream) {
   db.exec(readFileSync(join(projectDir, 'schema.sqlite.sql'), 'utf8'));
 
   // One-shot wipe, for clearing throwaway accounts out of a deployed database.
-  // The marker is written into the data directory rather than the repository,
-  // so re-uploading the project cannot trigger a second wipe: once this has run
-  // on a volume it never runs again there.
+  // The flag holds a token; the marker in the data directory records the token
+  // already applied. A wipe runs only when the two differ, so re-uploading the
+  // project cannot empty a live database again, and a new token can be used
+  // deliberately when another clear-out is wanted.
   const resetFlag = join(projectDir, 'reset-db.flag');
   const resetMarker = join(dataDir, '.reset-done');
-  if (existsSync(resetFlag) && !existsSync(resetMarker)) {
-    for (const table of [
-      'relay_packets', 'room_members', 'messages', 'rooms',
-      'friendships', 'friend_requests', 'auth_limiter', 'sessions', 'users',
-    ]) {
-      db.exec(`DELETE FROM ${table}`);
+  if (existsSync(resetFlag)) {
+    const token = readFileSync(resetFlag, 'utf8').trim() || 'reset';
+    const applied = existsSync(resetMarker) ? readFileSync(resetMarker, 'utf8').trim() : '';
+    if (token !== applied) {
+      for (const table of [
+        'relay_packets', 'room_members', 'messages', 'rooms',
+        'friendships', 'friend_requests', 'auth_limiter', 'sessions', 'users',
+      ]) {
+        db.exec(`DELETE FROM ${table}`);
+      }
+      writeFileSync(resetMarker, token);
+      console.log('database reset: application rows cleared');
     }
-    writeFileSync(resetMarker, new Date().toISOString());
-    console.log('database reset: application rows cleared');
   }
 
   handle = createApplication({ db, origin: () => undefined });
